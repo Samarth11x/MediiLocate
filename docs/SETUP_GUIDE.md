@@ -73,8 +73,8 @@ The project uses an isolated Python virtual environment (`venv`) located at the 
 .\venv\Scripts\python.exe -m pip install -r backend/requirements.txt
 ```
 Pinned dependencies include:
-- `Django==5.1.15`
-- `djangorestframework==3.17.2`
+- `Django==5.2.18` (LTS series)
+- `djangorestframework==3.18.3`
 - `psycopg[binary]==3.3.6` (Psycopg 3 with precompiled Windows wheels)
 - `django-cors-headers==4.9.0`
 - `python-dotenv==1.2.4`
@@ -183,13 +183,30 @@ npm.cmd run build
 
 ---
 
-## 7. Current Phase Status
+## 7. Core Intelligence Development & Testing (PowerShell)
+
+The `core_intelligence/` package contains pure Python algorithms (search matching, availability rules, Haversine distance, transparent ranking).
+
+### 7.1 Install Test Runner Dependencies
+```powershell
+.\venv\Scripts\python.exe -m pip install -r core_intelligence/requirements-dev.txt
+```
+
+### 7.2 Run Core Intelligence Pytest Suite
+```powershell
+.\venv\Scripts\python.exe -m pytest core_intelligence/tests -q
+```
+Executes all 67 isolated unit tests across normalization, medicine matching, availability, freshness, distance, and ranking.
+
+---
+
+## 8. Current Phase Status
 
 > [!IMPORTANT]
-> **Phase 3 Status (COMPLETED):**
-> - The Django REST Framework backend foundation is fully operational.
-> - Models (`Pharmacy`, `Medicine`, `Inventory`) and migrations are in place.
-> - Health endpoint `/api/v1/health/` returns `200 OK`.
-> - Automated test suites: **16/16 backend tests pass** and **7/7 frontend tests pass**.
+> **Phase 4 Status (COMPLETED):**
+> - Backend upgraded to Django 5.2.18 LTS and DRF 3.18.3.
+> - Pure Python Core Intelligence engine fully implemented in `core_intelligence/`.
+> - Medication identity safeguards, availability rules, Haversine distance, and multi-factor ranking verified.
+> - Automated test suites: **67/67 Core Intelligence tests pass**, **16/16 backend tests pass**, and **7/7 frontend tests pass**.
 > 
-> Proceed to **Phase 4 (Core Intelligence)** to implement search normalization, ranking heuristics, and Haversine geospatial calculations.
+> Proceed to **Phase 5 (MediBot Conversational Layer)** to build intent parsing, dialogue flows, tool adapters, and medical safety guardrails.

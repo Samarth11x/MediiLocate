@@ -88,6 +88,9 @@ class Inventory(models.Model):
     def get_availability_status(self, low_stock_threshold=10):
         """
         Calculated availability interpretation.
+        Delegates classification to core_intelligence.availability.rules.classify_availability
+        when available, maintaining consistent status keys and labels.
+
         NOTE: Availability is NOT stored as a redundant database column to prevent
         desynchronization with actual stock counts.
         - None  -> 'UNKNOWN' (Availability Unknown)
@@ -95,13 +98,27 @@ class Inventory(models.Model):
         - 1..9  -> 'LOW_STOCK' (Low Stock)
         - >=10  -> 'AVAILABLE' (Available)
         """
-        if self.quantity is None:
-            return 'UNKNOWN', 'Availability Unknown'
-        if self.quantity == 0:
-            return 'OUT_OF_STOCK', 'Out of Stock'
-        if 0 < self.quantity < low_stock_threshold:
-            return 'LOW_STOCK', 'Low Stock'
-        return 'AVAILABLE', 'Available'
+        try:
+            from core_intelligence.availability.rules import classify_availability, AvailabilityConfig
+            cfg = AvailabilityConfig(low_stock_threshold=low_stock_threshold)
+            status_key = classify_availability(self.quantity, cfg)
+        except ImportError:
+            if self.quantity is None:
+                status_key = 'UNKNOWN'
+            elif self.quantity == 0:
+                status_key = 'OUT_OF_STOCK'
+            elif 0 < self.quantity < low_stock_threshold:
+                status_key = 'LOW_STOCK'
+            else:
+                status_key = 'AVAILABLE'
+
+        labels = {
+            'UNKNOWN': 'Availability Unknown',
+            'OUT_OF_STOCK': 'Out of Stock',
+            'LOW_STOCK': 'Low Stock',
+            'AVAILABLE': 'Available',
+        }
+        return status_key, labels.get(status_key, 'Availability Unknown')
 
     def __str__(self):
         qty_str = f"Qty: {self.quantity}" if self.quantity is not None else "Qty: Unknown"

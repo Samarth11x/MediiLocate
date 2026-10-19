@@ -11,7 +11,7 @@ This roadmap establishes the phased engineering plan for developing the **MediLo
 | **Phase 1** | **Project Foundation** | Engineering standards, directory hierarchy, environment templates, docs | **COMPLETED** |
 | **Phase 2** | **Frontend Foundation** | React + Vite setup, UI design system, component hierarchy, test suite | **COMPLETED** |
 | **Phase 3** | **Backend & Supabase** | Django REST Framework, database schema, ORM models, API serializers | **COMPLETED** |
-| **Phase 4** | **Core Intelligence** | Medicine search normalization, ranking heuristics, location engine | Planned |
+| **Phase 4** | **Core Intelligence** | Medicine search normalization, ranking heuristics, location engine | **COMPLETED** |
 | **Phase 5** | **MediBot Conversational Layer** | Intent recognition, dialogue flows, safety interceptors, tool integration | Planned |
 | **Phase 6** | **Search & Pharmacy Workflows** | End-to-end integration of search, availability, inventory management, chat | Planned |
 | **Phase 7** | **Integration, Security & QA** | E2E testing, penetration checks, performance optimization, release readiness | Planned |
@@ -78,16 +78,22 @@ This roadmap establishes the phased engineering plan for developing the **MediLo
 ---
 
 ### Phase 4: Core Intelligence Module
-- **Status:** Planned
+- **Status:** **Completed**
 - **Objectives:**
-  - Build standalone, framework-independent Python package in `core_intelligence/`.
-  - Implement **Location Engine**: Great-circle Haversine formula, bounding box calculation, radius filtering.
-  - Implement **Availability Engine**: Stock threshold evaluation (`IN_STOCK`, `LOW_STOCK`, `OUT_OF_STOCK`).
-  - Implement **Ranking Engine**: Composite scoring algorithm weighting distance, stock availability, and operational hours.
-  - Implement **Search Engine**: Case-insensitive substring and fuzzy matching for generic and brand names.
+  - Perform backend dependency upgrade to supported Django 5.2.18 LTS and DRF 3.18.3 without schema or migration rewrites.
+  - Build standalone, framework-independent pure Python package in `core_intelligence/`:
+    - **Search Engine (`search_engine/`):** Unicode/case normalization, strength unit spacing, punctuation stripping, tokenization, exact/partial/alias matching, and difflib fuzzy matching.
+    - **Medication Identity Safeguards:** Strict strength matching (e.g. 500mg request rejects 650mg) and dosage form matching (e.g. syrup request rejects tablets); no unauthorized substitution.
+    - **Availability & Freshness (`availability/`):** Canonical thresholds (`AVAILABLE`, `LOW_STOCK`, `OUT_OF_STOCK`, `UNKNOWN`), negative quantity rejection, record age evaluation, and `OUTDATED` unconfirmed presentation state.
+    - **Location Engine (`location/`):** Validated Haversine distance formula ($R = 6371.0\text{ km}$), coordinate bounds validation, antimeridian crossing handling, and radius filtering.
+    - **Ranking Engine (`ranking/`):** Transparent composite heuristic scoring (relevance 45%, availability & freshness 30%, distance 15%, price 10%), deterministic multi-key tie-breaking, input immutability, and human-readable explanation generation.
+  - Refactor `Inventory.get_availability_status()` in Django to delegate to `core_intelligence.availability.rules.classify_availability`.
+  - Construct comprehensive isolated pytest suite in `core_intelligence/tests/` (67/67 tests passing).
 - **Verification Gate:**
-  - 100% pytest pass rate across edge cases in `core_intelligence/tests/`.
+  - 100% pytest pass rate across edge cases in `core_intelligence/tests/` (67/67 passed).
   - Zero imports of Django, database drivers, or frontend libraries in `core_intelligence`.
+  - Django test suite passes 100% (16/16 passed).
+  - Frontend test suite and build pass cleanly (7/7 tests passed, build clean).
 
 ---
 

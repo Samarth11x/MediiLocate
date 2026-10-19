@@ -62,11 +62,21 @@ graph TD
 - **Database Connection Strategy:** Uses `psycopg` (Psycopg 3) with SSL (`require`) connecting to Supabase PostgreSQL (IPv4 session-pooler or direct IPv6), with an automatic fallback to local SQLite for offline developer environments.
 
 ### 2.3 Core Intelligence (`core_intelligence/`)
-- **Search Engine (`search_engine/`):** Normalizes brand vs. generic names, handles fuzzy keyword matching, and performs phonetically similar ingredient lookups.
-- **Ranking Engine (`ranking/`):** Calculates multi-criteria ranking scores based on:
-  $$\text{Score} = w_1 \cdot \text{Proximity} + w_2 \cdot \text{StockQuantity} + w_3 \cdot \text{OperatingStatus} + w_4 \cdot \text{Price}$$
-- **Availability State Engine (`availability/`):** Classifies inventory levels into discrete states (`IN_STOCK`, `LOW_STOCK`, `OUT_OF_STOCK`) according to predefined safety thresholds.
-- **Location Engine (`location/`):** Computes precise great-circle distances using the Haversine formula and performs bounding-box radius filtering.
+A pure Python algorithm engine completely decoupled from web frameworks, network calls, and databases.
+- **Search Engine (`search_engine/`):**
+  - `normalization.py`: Unicode NFKC normalization, lowercase folding, word-safe microgram unit standardization (`µg`/`ug` $\rightarrow$ `mcg`), punctuation stripping, and strength formatting (e.g., `500mg` $\rightarrow$ `500 mg`, `0.5%` $\rightarrow$ `0.5 %`).
+  - `matching.py`: Multi-tier matching (exact generic/brand, exact aliases, partial names, difflib fuzzy matching) with strict **medication identity safeguards** preventing unauthorized dosage or formulation substitutions (e.g. 500mg request excludes 650mg; syrup request excludes tablets).
+- **Availability & Freshness Engine (`availability/`):**
+  - `rules.py`: Canonical stock level classification (`AVAILABLE`, `LOW_STOCK`, `OUT_OF_STOCK`, `UNKNOWN`) with configurable thresholds and strict validation rejecting negative quantities.
+  - `freshness.py`: Timezone-aware record age evaluation against configurable thresholds (default 24h). Enforces presentation safety: stale known stock displays `OUTDATED` / `UNCONFIRMED` rather than false `AVAILABLE` or `OUT_OF_STOCK`.
+- **Location Engine (`location/`):**
+  - `distance.py`: Validated great-circle Haversine formula ($R = 6371.0\text{ km}$), boundary checks ($[-90, 90]$, $[-180, 180]$), antimeridian crossing handling, and radius filtering with safe null handling (never fabricates distances).
+- **Ranking Engine (`ranking/`):**
+  - `scoring.py`: Multi-factor composite heuristic scoring:
+    $$\text{Composite Score} = 0.45 \cdot S_{\text{rel}} + 0.30 \cdot S_{\text{avail}} + 0.15 \cdot S_{\text{dist}} + 0.10 \cdot S_{\text{price}}$$
+    Guarantees relevance dominates over cheap/near irrelevant drugs; ensures missing distance (0.20) and missing price (0.50) are never treated as 0 km or free.
+  - `explanations.py`: Generates standardized machine-readable reason codes (`EXACT_MATCH`, `IN_STOCK_CONFIRMED`, `STALE_STOCK_CAUTION`, `PROXIMITY_ADVANTAGE`) and transparent human explanations.
+  - Guarantees complete **input immutability** and deterministic multi-key tie-breaking.
 
 ### 2.4 MediBot (`medibot/`)
 - **Intent Detection (`intents/`):** Identifies user intent (e.g., `FIND_MEDICINE`, `CHECK_AVAILABILITY`, `PHARMACY_HOURS`, `GENERAL_INQUIRY`, `EMERGENCY_DETECTED`).

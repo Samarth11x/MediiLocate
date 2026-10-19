@@ -97,23 +97,21 @@ MediLocate/
 
 ## 4. Current Development Phase
 
-> **Phase 3: Backend & Supabase Foundation (COMPLETED)**
-> - Scaffolded Django 5.1+ and Django REST Framework backend application in `backend/` with Psycopg 3 PostgreSQL integration.
-> - Configured enterprise-ready Supabase PostgreSQL database connectivity with SSL (`require`), connection pooling documentation, and safe local SQLite fallback for offline development.
-> - Built domain models with strict relational integrity, check constraints, and indexing:
->   - `apps.pharmacies`: `Pharmacy` model with WGS84 geo-coordinate validation (`[-90, 90]`, `[-180, 180]`), verification status workflow, operating hours JSON, and demo flagging.
->   - `apps.medicines`: `Medicine` catalog model decoupled from pharmacy stock, supporting generic & brand names, strengths, forms, and search aliases.
->   - `apps.inventory`: `Inventory` model with `UniqueConstraint(pharmacy, medicine)`, non-negative price/quantity checks, nullable quantity support for unknown stock, and dynamic `get_availability_status()` evaluation.
-> - Implemented `/api/v1/health/` liveness endpoint returning `{"status": "ok", "service": "MediLocate API"}` with HTTP 200.
-> - Registered domain models with Django Admin interface (`backend/apps/*/admin.py`).
-> - Established automated backend test suite with 16/16 tests passing in `backend/tests/`.
-> - Verified frontend suite remains completely intact (7/7 Vitest tests passing, production build passing).
+> **Phase 4: Core Intelligence Engine (COMPLETED)**
+> - Upgraded backend dependencies to currently supported Django 5.2.18 LTS and DRF 3.18.3.
+> - Implemented pure Python `core_intelligence/` package with zero framework, database, or network dependencies:
+>   - `search_engine/`: Deterministic query normalization, tokenization, strength formatting, exact & partial brand/generic matching, difflib fuzzy matching, and strict medication identity safeguards (preventing strength/form mismatch substitutions).
+>   - `availability/`: Canonical availability rules (`AVAILABLE`, `LOW_STOCK`, `OUT_OF_STOCK`, `UNKNOWN`), negative quantity rejection, record age evaluation, and presentation safety (`OUTDATED` unconfirmed flagging).
+>   - `location/`: Validated Haversine great-circle distance ($R = 6371.0\text{ km}$), boundary checking ($[-90, 90]$, $[-180, 180]$), antimeridian crossing support, safe null handling, and radius filtering.
+>   - `ranking/`: Multi-factor composite heuristic ranking (relevance 45%, availability & freshness 30%, distance 15%, price 10%), deterministic multi-key tie-breaking, input immutability, and human-readable explanation generation.
+> - Refactored backend `Inventory.get_availability_status()` into a thin adapter delegating canonical stock classification to `core_intelligence`.
+> - Authored comprehensive isolated pytest suite in `core_intelligence/tests/` with **67/67 unit tests passing**.
+> - Verified all 16 backend Django tests and 7 frontend Vitest tests remain passing with zero regressions.
 
 ---
 
 ## 5. Next Steps
 
-1. **Phase 4: Core Intelligence Implementation:** Implement distance calculation (Haversine formula), medicine ranking heuristics, and availability rules as a standalone Python package with isolated pytest suites.
-2. **Phase 5: MediBot Development:** Build intent parsing, conversational dialogue flows, tool adapters, and strict medical disclaimer safety guards.
-3. **Phase 6: Search & Pharmacy Workflows:** End-to-end integration between frontend React UI, backend DRF endpoints, and core intelligence algorithms.
-4. **Phase 7: Integration, Security & QA:** E2E user journeys, rate limiting, audit logging, and production readiness.
+1. **Phase 5: MediBot Development:** Build intent parsing, conversational dialogue flows, tool adapters connecting to Core Intelligence, and strict medical disclaimer safety guards.
+2. **Phase 6: Search & Pharmacy Workflows:** End-to-end integration between frontend React UI, backend DRF endpoints, and core intelligence algorithms.
+3. **Phase 7: Integration, Security & QA:** E2E user journeys, rate limiting, audit logging, and production readiness.

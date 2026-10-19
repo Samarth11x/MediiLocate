@@ -6,10 +6,13 @@ from pathlib import Path
 
 def main():
     """Run administrative tasks."""
-    # Ensure backend directory is in sys.path
+    # Ensure backend and project root directories are in sys.path
     backend_dir = Path(__file__).resolve().parent
+    project_root = backend_dir.parent
     if str(backend_dir) not in sys.path:
         sys.path.insert(0, str(backend_dir))
+    if str(project_root) not in sys.path:
+        sys.path.append(str(project_root))
 
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
     try:

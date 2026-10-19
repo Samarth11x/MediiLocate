@@ -1,0 +1,4 @@
+# MediLocate AI - Core Intelligence Development Requirements
+# Isolated test runner dependencies for pure Python algorithm validation
+
+pytest==9.1.1

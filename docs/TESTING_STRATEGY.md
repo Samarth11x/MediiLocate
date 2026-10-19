@@ -29,13 +29,47 @@ graph TD
 ## 2. Multi-Tiered Test Scope
 
 ### 2.1 Core Intelligence Unit Tests (`core_intelligence/tests/`)
-- **Framework:** `pytest`
+- **Framework:** `pytest` (invoked via `.\venv\Scripts\python.exe -m pytest core_intelligence/tests -q`)
 - **Scope & Isolation:** Completely decoupled from web frameworks, network requests, and databases.
-- **Coverage Criteria:**
-  - **Location Engine:** Haversine formula distance accuracy against known geographic coordinates (e.g., pole crossings, equator crossings, zero distance, radius bounds).
-  - **Ranking Engine:** Deterministic scoring verification with diverse mock inputs (e.g., verifying that a pharmacy with high stock 2 km away ranks above an out-of-stock pharmacy 500 m away).
-  - **Availability Engine:** Boundary condition testing for threshold transitions (`IN_STOCK` >= 10 units, `LOW_STOCK` 1-9 units, `OUT_OF_STOCK` = 0).
-  - **Search Normalization:** Brand vs. generic synonym resolution, whitespace handling, and case-insensitivity.
+- **Implemented Test Coverage (67 Tests Passing):**
+  - **Normalization (`test_normalization.py` - 18 tests):**
+    - Case folding, whitespace collapsing, Unicode NFKC accents, full-width conversions, and microgram unit standardization.
+    - Medically significant punctuation retention (decimals, slashes, percentages, hyphens).
+    - Strength format spacing (`500 mg`, `0.5 %`, `250 mg / 5 ml`, `10 mcg`).
+    - Tokenization and empty/None/invalid input handling.
+    - Explicit dosage and form extraction (`extract_strength_and_form`).
+  - **Medicine Matching (`test_medicine_matching.py` - 10 tests):**
+    - Exact generic name matches and exact brand name matches (`match_score = 1.0`).
+    - Exact alias matching across synonyms (e.g. *acetaminophen* $\rightarrow$ *Paracetamol*).
+    - Partial name matching with substring and boundary checks.
+    - Supporting difflib fuzzy matching with configurable thresholds.
+    - **Medication identity safeguards:** Strict exclusion of conflicting strengths (500mg request excludes 650mg) and conflicting dosage forms (syrup request excludes tablets).
+    - Missing optional catalogue fields handling.
+    - Deterministic ordering (score DESC, brand ASC, id ASC) and limit slicing.
+  - **Availability Rules (`test_availability.py` - 10 tests):**
+    - Unknown quantity (`None` $\rightarrow$ `UNKNOWN`; never converted to zero).
+    - Confirmed zero quantity (`0` $\rightarrow$ `OUT_OF_STOCK`).
+    - Boundary transitions (`< 10` $\rightarrow$ `LOW_STOCK`; $\ge 10$ $\rightarrow$ `AVAILABLE`).
+    - Validation rejecting negative numbers (`-1`), non-integer floats, and booleans.
+    - Custom threshold configurations.
+  - **Freshness & Presentation (`test_freshness.py` - 11 tests):**
+    - Record age evaluation (fresh, exact threshold, stale, missing timestamp).
+    - Future timestamp rejection and naive/aware timezone handling.
+    - Combined user presentation: stale stock displays `OUTDATED` / `UNCONFIRMED`.
+    - Missing quantity always displays `UNKNOWN` regardless of timestamp age.
+  - **Geospatial Distance (`test_distance.py` - 9 tests):**
+    - Same coordinate identity ($0.0\text{ km}$).
+    - Equatorial degree validation (~$111.195\text{ km}$) and known city pair (London-Paris ~$343.5\text{ km}$).
+    - Symmetry ($A \rightarrow B = B \rightarrow A$).
+    - Antimeridian crossing (179° to -179° = ~$222.4\text{ km}$, not 39,000 km).
+    - Out-of-bounds latitude/longitude and non-finite value rejections.
+    - Safe distance wrapper (returns `None`, never fabricates distances) and radius filtering.
+  - **Transparent Ranking (`test_ranking.py` - 9 tests):**
+    - High relevance dominates over cheap/near irrelevant drugs.
+    - Fresh verified stock outranks stale unconfirmed stock.
+    - Distance proximity ordering and price tie-breaking.
+    - Missing distance (0.20 penalty) and missing price (0.50 neutral) handling.
+    - Input candidate immutability verification.
 
 ### 2.2 MediBot Unit & Safety Tests (`medibot/tests/`)
 - **Framework:** `pytest`
