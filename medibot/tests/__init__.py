@@ -1,0 +1,3 @@
+"""
+MediBot automated test suite.
+"""

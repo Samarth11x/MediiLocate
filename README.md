@@ -97,21 +97,23 @@ MediLocate/
 
 ## 4. Current Development Phase
 
-> **Phase 4: Core Intelligence Engine (COMPLETED)**
-> - Upgraded backend dependencies to currently supported Django 5.2.18 LTS and DRF 3.18.3.
-> - Implemented pure Python `core_intelligence/` package with zero framework, database, or network dependencies:
->   - `search_engine/`: Deterministic query normalization, tokenization, strength formatting, exact & partial brand/generic matching, difflib fuzzy matching, and strict medication identity safeguards (preventing strength/form mismatch substitutions).
->   - `availability/`: Canonical availability rules (`AVAILABLE`, `LOW_STOCK`, `OUT_OF_STOCK`, `UNKNOWN`), negative quantity rejection, record age evaluation, and presentation safety (`OUTDATED` unconfirmed flagging).
->   - `location/`: Validated Haversine great-circle distance ($R = 6371.0\text{ km}$), boundary checking ($[-90, 90]$, $[-180, 180]$), antimeridian crossing support, safe null handling, and radius filtering.
->   - `ranking/`: Multi-factor composite heuristic ranking (relevance 45%, availability & freshness 30%, distance 15%, price 10%), deterministic multi-key tie-breaking, input immutability, and human-readable explanation generation.
-> - Refactored backend `Inventory.get_availability_status()` into a thin adapter delegating canonical stock classification to `core_intelligence`.
-> - Authored comprehensive isolated pytest suite in `core_intelligence/tests/` with **67/67 unit tests passing**.
-> - Verified all 16 backend Django tests and 7 frontend Vitest tests remain passing with zero regressions.
+> **Phase 5: MediBot Conversational Intelligence & Safety Layer (COMPLETED)**
+> - Implemented pure-Python, rule-based conversational assistant in `medibot/` with zero database or framework coupling:
+>   - `safety/`: Strict input validation ($\le 500$ chars, rejection of empty/malformed inputs), acute emergency interceptor (chest pain, breathing difficulty, stroke, overdose) with immediate regional emergency guidance (112 / 108 / 911), and medical advice guardrail redirecting diagnoses, prescriptions, and dosage calculations to licensed practitioners.
+>   - `intents/`: Deterministic regex classifier recognizing 8 intent types (`EMERGENCY_CONCERN`, `MEDICAL_ADVICE`, `GREETING`, `HOW_IT_WORKS`, `PHARMACY_ONBOARDING`, `AVAILABILITY_HELP`, `PHARMACY_SEARCH`, `MEDICINE_SEARCH`, and `UNKNOWN`).
+>   - `tools/`: Protocols and adapters connecting `MedicineSearchTool` to `core_intelligence.search_engine.matching.search_medicines` via injected providers; honest placeholder `PharmacySearchTool` returning unavailable status until Phase 6.
+>   - `dialogue/`: `DialogueManager` handling multi-turn context (e.g. `awaiting_medicine_name`) and producing predictable `MediBotResponse` JSON schemas.
+> - Built backend REST adapter `POST /api/v1/chat/` with payload validation, HTTP 400 for bad input, HTTP 405 for disallowed methods, and safe HTTP 500 fallback.
+> - Maintained stateless privacy: Zero database storage of user chat queries or conversations.
+> - Authored comprehensive engineering guide in `docs/MEDIBOT.md`.
+> - Verified automated test suites:
+>   - **115/115 pytest tests pass** (67 Core Intelligence + 48 MediBot).
+>   - **29/29 Django backend tests pass** (including 13 Chat API tests).
+>   - **7/7 frontend Vitest tests pass** with clean production build.
 
 ---
 
 ## 5. Next Steps
 
-1. **Phase 5: MediBot Development:** Build intent parsing, conversational dialogue flows, tool adapters connecting to Core Intelligence, and strict medical disclaimer safety guards.
-2. **Phase 6: Search & Pharmacy Workflows:** End-to-end integration between frontend React UI, backend DRF endpoints, and core intelligence algorithms.
-3. **Phase 7: Integration, Security & QA:** E2E user journeys, rate limiting, audit logging, and production readiness.
+1. **Phase 6: Search & Pharmacy Workflows:** End-to-end integration between frontend React UI, backend DRF endpoints, Core Intelligence algorithms, and MediBot chat drawer.
+2. **Phase 7: Integration, Security & QA:** E2E user journeys, rate limiting, audit logging, and production readiness.

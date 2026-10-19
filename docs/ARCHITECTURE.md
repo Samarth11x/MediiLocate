@@ -79,13 +79,22 @@ A pure Python algorithm engine completely decoupled from web frameworks, network
   - Guarantees complete **input immutability** and deterministic multi-key tie-breaking.
 
 ### 2.4 MediBot (`medibot/`)
-- **Intent Detection (`intents/`):** Identifies user intent (e.g., `FIND_MEDICINE`, `CHECK_AVAILABILITY`, `PHARMACY_HOURS`, `GENERAL_INQUIRY`, `EMERGENCY_DETECTED`).
-- **Dialogue State Machine (`dialogue/`):** Manages multi-turn conversation context and synthesizes structured, helpful responses.
-- **Tool Adapter Layer (`tools/`):** Exposes search functions that wrap `core_intelligence` capabilities.
-- **Safety & Guardrails (`safety/`):**
-  - **Zero-Prescription Rule:** Strictly prevents the assistant from prescribing medicines, suggesting dosages, or recommending alternatives for prescription drugs.
-  - **Emergency Interceptor:** Detects acute medical emergencies (e.g., chest pain, difficulty breathing, acute poisoning) and immediately instructs the user to contact local emergency services (e.g., 911 / 112 / 108).
-  - **Mandatory Disclaimers:** Appends medical guidance disclaimers emphasizing that information provided is for educational/locational purposes only.
+An independent, pure-Python conversational intelligence package designed for safe medicine discovery. Does not import Django models or query PostgreSQL directly; data and tools are injected by backend services.
+- **Safety Subsystem (`safety/`):**
+  - `input_validation.py`: Sanitizes user inputs, enforces max 500-character length limits, and rejects non-string/empty payloads.
+  - `emergency.py`: First-priority safety interceptor detecting acute emergencies (chest pain, breathing difficulty, stroke, overdose, severe hemorrhage) and returning immediate regional emergency hotline guidance (112 / 108 / 911).
+  - `safety_rules.py`: Second-priority guardrail intercepting prescription, diagnosis, dosage calculation, or drug alteration inquiries and redirecting users to licensed physicians and pharmacists.
+- **Intent Recognition (`intents/`):**
+  - `patterns.py`: Deterministic compiled regular expressions for 8 supported intent types: `EMERGENCY_CONCERN`, `MEDICAL_ADVICE`, `GREETING`, `HOW_IT_WORKS`, `PHARMACY_ONBOARDING`, `AVAILABILITY_HELP`, `PHARMACY_SEARCH`, `MEDICINE_SEARCH`, and `UNKNOWN`.
+  - `classifier.py`: Rule-based intent classifier with strict safety precedence ordering.
+- **Tool Adapter Layer (`tools/`):**
+  - `interfaces.py`: Clean Protocols and `ToolResult` contracts for medicine and pharmacy search.
+  - `medicine_search.py`: Connects to injectable catalogue provider, delegates discovery to `core_intelligence.search_engine.matching.search_medicines`, and enforces medication identity safeguards.
+  - `pharmacy_search.py`: Honest placeholder returning unpopulated/unavailable status until Phase 6 integration without fabricating false stores.
+- **Dialogue Management (`dialogue/`):**
+  - `context.py`: Defines `ConversationContext` (whitelisted non-sensitive state) and `MediBotResponse` (standardized JSON payload schema).
+  - `responses.py`: Deterministic templates and formatting for search results, stock status explanations, and onboarding guidance.
+  - `manager.py`: `DialogueManager` coordinating validation, safety filters, multi-turn state (e.g. `awaiting_medicine_name`), and tool execution.
 
 ### 2.5 Database (`database/`)
 - **Source of Truth:** Hosted on Supabase PostgreSQL.
@@ -129,28 +138,42 @@ sequenceDiagram
     actor User as User / Patient
     participant FE as Frontend (Chat Widget)
     participant BE as Django API (/api/v1/chat/)
-    participant MB as MediBot Module
-    participant CI as Core Intelligence
+    participant DM as DialogueManager (medibot)
+    participant SF as Safety Guardrails (medibot.safety)
+    participant MT as MedicineSearchTool (medibot.tools)
+    participant CI as Core Intelligence (matching)
     participant DB as Supabase PostgreSQL
 
-    User->>FE: Types "Where can I find Paracetamol nearby?"
-    FE->>BE: POST /api/v1/chat/message (user_message, session_id, location)
-    BE->>MB: process_message(user_message, session_state)
-    MB->>MB: Check safety filters (No diagnosis / No prescription)
-    alt Emergency or Prescribing Detected
-        MB-->>BE: Intercept with Safety Disclaimer / Emergency Protocol
-    else Safe Search Intent
-        MB->>BE: Request inventory data for "Paracetamol"
-        BE->>DB: Query nearby inventory
-        DB-->>BE: Return inventory rows
-        BE->>CI: Rank by distance and availability
-        CI-->>BE: Sorted inventory
-        BE-->>MB: Tool execution result
-        MB->>MB: Formulate conversational response with safety footnote
-        MB-->>BE: Return formatted assistant reply
+    User->>FE: Types query (e.g. "Find Paracetamol 500mg")
+    FE->>BE: POST /api/v1/chat/ {message, context}
+    BE->>BE: Validate message length (<= 500) and type
+    BE->>DM: process_message(user_message, context)
+    DM->>SF: check_emergency(user_message)
+    opt Acute Emergency Detected
+        SF-->>DM: Return Emergency Guidance (112 / 108 / 911)
+        DM-->>BE: MediBotResponse(EMERGENCY_CONCERN)
+        BE-->>FE: HTTP 200 OK
     end
-    BE-->>FE: HTTP 200 OK (Assistant response payload)
-    FE-->>User: Displays message in chat window
+    DM->>SF: check_medical_advice(user_message)
+    opt Clinical Advice / Prescribing Inquired
+        SF-->>DM: Return Doctor / Pharmacist Redirection
+        DM-->>BE: MediBotResponse(MEDICAL_ADVICE)
+        BE-->>FE: HTTP 200 OK
+    end
+    DM->>DM: Check multi-turn context or classify intent
+    alt Medicine Search Intent
+        DM->>MT: search(medicine_name)
+        MT->>DB: Read catalogue records via injected provider
+        DB-->>MT: Active Medicine formulary rows
+        MT->>CI: search_medicines(query, catalogue)
+        CI-->>MT: Standardized MedicineMatchResults
+        MT-->>DM: ToolResult(status='success', data=matches)
+        DM-->>BE: MediBotResponse(MEDICINE_SEARCH, results)
+    else Informational / FAQ Intent
+        DM-->>BE: MediBotResponse(GREETING / HOW_IT_WORKS / ONBOARDING)
+    end
+    BE-->>FE: HTTP 200 OK (MediBotResponse.to_dict())
+    FE-->>User: Displays message, suggestions, and medicine cards
 ```
 
 ---

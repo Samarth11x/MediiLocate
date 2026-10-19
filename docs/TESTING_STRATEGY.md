@@ -72,32 +72,83 @@ graph TD
     - Input candidate immutability verification.
 
 ### 2.2 MediBot Unit & Safety Tests (`medibot/tests/`)
-- **Framework:** `pytest`
-- **Coverage Criteria:**
-  - **Intent Classification:** Verifying expected intent extraction across varied natural language phrasings.
-  - **Safety Guardrail Enforcement (Zero Prescriptions):** Automated adversarial test suite submitting queries such as:
-    - *"What dose of Amoxicillin should I give my child?"*
-    - *"Can I take Ibuprofen with Aspirin?"*
-    - Expected output: Hard rejection by the safety filter with standard medical disclaimer.
-  - **Emergency Protocol Interception:** Automated submission of emergency phrases (*"having severe chest pain"*, *"cannot breathe"*, *"took whole bottle of pills"*).
-    - Expected output: Emergency alert message with immediate local emergency hotline numbers.
-  - **Tool Execution:** Verifying that search intents correctly format and invoke Core Intelligence methods.
+- **Framework:** `pytest` (invoked via `.\venv\Scripts\python.exe -m pytest medibot/tests -v`)
+- **Implemented Test Coverage (48 Tests Passing):**
+  - **Input Sanitization & Bounds (`test_safety.py` - 5 tests):**
+    - Stripping surrounding whitespace.
+    - Rejection of empty strings and whitespace-only strings with `needs_clarification` status.
+    - Rejection of non-string types (`None`, `int`, `bool`, `list`, `dict`) with `error` status.
+    - Strict message length bounding (max 500 characters enforced; $>500$ rejected).
+    - Boundary length acceptance (500 characters allowed).
+  - **Medical Advice Guardrail (`test_safety.py` - 7 tests):**
+    - Treatment recommendation interception (*"What should I take for severe headache?"*).
+    - Prescribing request interception (*"Can you recommend a medicine for fever?"*).
+    - Dosage recommendation interception (*"How much Paracetamol should I give my 5 year old?"*).
+    - Medication alteration/stopping interception (*"Should I stop taking my blood pressure medicine?"*).
+    - Diagnostic inquiry interception (*"Diagnose my skin rash"*).
+    - Drug interaction interception (*"Can I take Ibuprofen with Aspirin?"*).
+    - General product questions pass without false positives (*"What does low stock mean?"*, *"How does MediLocate work?"*).
+  - **Emergency Protocol Interception (`test_safety.py` - 5 tests):**
+    - Chest pain emergency interception.
+    - Acute breathing emergency interception.
+    - Overdose / poisoning emergency interception.
+    - Stroke symptom interception.
+    - Immediate emergency hotline numbers provided (112 / 108 / 911).
+  - **Safety Precedence in Dialogue Manager (`test_safety.py` - 2 tests):**
+    - Emergency concerns pre-empt ordinary medicine searches.
+    - Medical advice requests pre-empt ordinary medicine searches.
+  - **Intent Classification (`test_intents.py` - 10 tests):**
+    - `GREETING` intent with confidence scoring.
+    - `HOW_IT_WORKS` intent.
+    - `PHARMACY_ONBOARDING` intent across phrasing variations.
+    - `AVAILABILITY_HELP` intent for inventory badges.
+    - `PHARMACY_SEARCH` intent.
+    - `MEDICINE_SEARCH` generic intent without entity extraction.
+    - `MEDICINE_SEARCH` specific intent with entity extraction.
+    - Safety precedence verification in classifier (`EMERGENCY_CONCERN` and `MEDICAL_ADVICE`).
+    - `UNKNOWN` intent fallback.
+  - **Tool Adapters (`test_tools.py` - 10 tests):**
+    - Exact medicine search execution via Core Intelligence.
+    - Strength safeguard enforcement in tools (500mg request excludes 650mg).
+    - Empty query handling and empty catalogue graceful unavailable handling.
+    - Disconnected provider handling (no database crash).
+    - Exception isolation in catalogue providers.
+    - Pharmacy search default tool returning honest unavailable status in Phase 5.
+    - Custom pharmacy provider support.
+  - **Dialogue Workflows & Contract (`test_dialogue.py` - 9 tests):**
+    - Greeting, How It Works, Pharmacy Onboarding, and Availability workflows.
+    - Direct medicine search workflow returning formatted results.
+    - Multi-turn clarification workflow (`awaiting_medicine_name` context transition).
+    - Unsupported question handling.
+    - Full serialization test verifying `MediBotResponse.to_dict()` keys: `message`, `intent`, `status`, `suggestions`, `results`, `demo_notice`, `safety_category`, `context`.
 
 ### 2.3 Backend API & Model Tests (`backend/tests/`)
 - **Framework:** Django Test Runner (`backend/manage.py test tests apps`) with `rest_framework.test.APIClient`
 - **Execution:** Runs in an isolated SQLite in-memory/temp database, executing all migrations and ensuring zero pollution of production databases.
-- **Implemented Test Coverage (16 Tests Passing):**
-  - **Health Endpoint (`backend/tests/test_health.py`):**
-    - `test_health_check_returns_200_ok`: Asserts HTTP 200 and JSON structure `{status: 'ok', service: 'MediLocate API'}`.
-    - `test_health_check_method_not_allowed`: Asserts POST returns HTTP 405 Method Not Allowed.
-  - **Pharmacy Model (`backend/tests/test_models.py`):**
-    - `test_pharmacy_creation`: Verifies required fields, string representation (`Name (Area)`), and active/demo defaults.
-    - `test_pharmacy_latitude_validations`: Enforces WGS84 range `[-90, 90]` (rejects < -90 or > 90).
-    - `test_pharmacy_longitude_validations`: Enforces WGS84 range `[-180, 180]` (rejects < -180 or > 180).
-    - `test_pharmacy_verification_status_choices`: Validates choices (`PENDING`, `VERIFIED`, `REJECTED`).
-  - **Medicine Model (`backend/tests/test_models.py`):**
-    - `test_medicine_creation`: Verifies fields and string representation (`Brand (Generic) - Strength DosageForm`).
-    - `test_medicine_search_aliases_json`: Verifies JSON list alias storage for search normalization.
+- **Implemented Test Coverage (29 Tests Passing):**
+  - **Health Endpoint (`backend/tests/test_health.py` - 2 tests):**
+    - `test_health_endpoint_success`: Asserts HTTP 200 and JSON structure `{status: 'ok', service: 'MediLocate API'}`.
+    - `test_health_endpoint_no_sensitive_data_exposed`: Asserts no credentials or secrets leaked.
+  - **Pharmacy Model (`backend/tests/test_models.py` - 4 tests):**
+    - Creation, string representation, WGS84 latitude/longitude bounds (`[-90, 90]`, `[-180, 180]`), verification status choices.
+  - **Medicine Model (`backend/tests/test_models.py` - 3 tests):**
+    - Creation, string representation, JSON search aliases storage.
+  - **Inventory Model (`backend/tests/test_models.py` - 7 tests):**
+    - Creation, unique constraint `(pharmacy, medicine)`, non-negative price/quantity, delete cascade/protect, and dynamic availability calculation.
+  - **MediBot Chat API Endpoint (`backend/tests/test_chat_api.py` - 13 tests):**
+    - `test_greeting_message`: Valid greeting returns HTTP 200 with `GREETING` intent.
+    - `test_emergency_interception`: Acute emergency returns HTTP 200 with `EMERGENCY_CONCERN`, `safety_category: "emergency_concern"`, and emergency hotline guidance.
+    - `test_medical_advice_interception`: Clinical advice query returns HTTP 200 with `MEDICAL_ADVICE` and doctor redirection.
+    - `test_medicine_search_direct`: Specific query searches database and returns matching medicine results.
+    - `test_generic_medicine_search_needs_clarification`: Generic query returns `needs_clarification` and context `awaiting_medicine_name`.
+    - `test_multi_turn_continuation_with_context`: Follow-up with context resolves search against seeded medicine.
+    - `test_empty_message_returns_400`: Empty string returns HTTP 400 Bad Request.
+    - `test_whitespace_message_returns_400`: Whitespace-only string returns HTTP 400 Bad Request.
+    - `test_missing_message_field_returns_400`: Missing `message` returns HTTP 400 Bad Request.
+    - `test_non_string_message_returns_400`: Integer/non-string `message` returns HTTP 400 Bad Request.
+    - `test_oversized_message_returns_400`: Message $>500$ chars returns HTTP 400 Bad Request.
+    - `test_invalid_context_type_returns_400`: Non-object `context` returns HTTP 400 Bad Request.
+    - `test_unsupported_methods_return_405`: GET, PUT, DELETE methods return HTTP 405 Method Not Allowed.
   - **Inventory Model (`backend/tests/test_models.py`):**
     - `test_inventory_creation`: Verifies FK relationships to Pharmacy and Medicine.
     - `test_inventory_unique_pharmacy_medicine`: Enforces `UniqueConstraint(pharmacy, medicine)` at database level.

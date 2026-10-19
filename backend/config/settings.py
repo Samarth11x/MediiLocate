@@ -19,9 +19,11 @@ PROJECT_ROOT = BASE_DIR.parent
 load_dotenv(PROJECT_ROOT / '.env')
 load_dotenv(BASE_DIR / '.env')
 
-# Ensure backend directory is in python path
+# Ensure backend directory and project root are in python path
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 # ------------------------------------------------------------------------------
 # Security & Environment Settings

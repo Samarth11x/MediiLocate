@@ -98,7 +98,7 @@ Pinned dependencies include:
 ```powershell
 .\venv\Scripts\python.exe backend/manage.py test tests apps
 ```
-Runs 16 unit tests covering `/api/v1/health/`, model integrity, geo-coordinate validation, and dynamic availability evaluation.
+Runs 29 unit and API tests covering `/api/v1/health/`, model integrity, geo-coordinate validation, dynamic availability evaluation, and the `/api/v1/chat/` conversational endpoint.
 
 ### 4.4 Start the Django Development Server
 ```powershell
@@ -115,6 +115,26 @@ Invoke-RestMethod -Uri http://127.0.0.1:8000/api/v1/health/
 Or via curl:
 ```bash
 curl http://127.0.0.1:8000/api/v1/health/
+```
+
+### 4.6 Verify the MediBot Chat Endpoint
+In PowerShell:
+```powershell
+# Test greeting
+$body = @{ message = "Hello MediBot" } | ConvertTo-Json
+Invoke-RestMethod -Uri http://127.0.0.1:8000/api/v1/chat/ -Method Post -Body $body -ContentType "application/json"
+
+# Test medicine lookup
+$body = @{ message = "Find Paracetamol 500mg" } | ConvertTo-Json
+Invoke-RestMethod -Uri http://127.0.0.1:8000/api/v1/chat/ -Method Post -Body $body -ContentType "application/json"
+
+# Test acute emergency safety interceptor
+$body = @{ message = "I have severe chest pain" } | ConvertTo-Json
+Invoke-RestMethod -Uri http://127.0.0.1:8000/api/v1/chat/ -Method Post -Body $body -ContentType "application/json"
+```
+Or via curl:
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/chat/ -H "Content-Type: application/json" -d "{\"message\": \"Hello\"}"
 ```
 
 ---
@@ -200,13 +220,33 @@ Executes all 67 isolated unit tests across normalization, medicine matching, ava
 
 ---
 
-## 8. Current Phase Status
+## 8. MediBot Conversational Intelligence & Safety Testing (PowerShell)
+
+The `medibot/` package contains the rule-based assistant, medical safety guardrails, intent parser, and tool interfaces.
+
+### 8.1 Run MediBot Pytest Suite
+```powershell
+.\venv\Scripts\python.exe -m pytest medibot/tests -v
+```
+Executes all 48 tests verifying input sanitization, acute emergency interceptor (chest pain, breathing difficulty, overdose, stroke), medical advice guardrails (treatment, dosage, drug interaction), intent patterns, tool protocols, and dialogue manager workflows.
+
+### 8.2 Run Combined Python Intelligence Pytest Suite
+```powershell
+.\venv\Scripts\python.exe -m pytest core_intelligence/tests medibot/tests -q
+```
+Executes all 115 pure-Python tests across Core Intelligence and MediBot.
+
+---
+
+## 9. Current Phase Status
 
 > [!IMPORTANT]
-> **Phase 4 Status (COMPLETED):**
-> - Backend upgraded to Django 5.2.18 LTS and DRF 3.18.3.
-> - Pure Python Core Intelligence engine fully implemented in `core_intelligence/`.
-> - Medication identity safeguards, availability rules, Haversine distance, and multi-factor ranking verified.
-> - Automated test suites: **67/67 Core Intelligence tests pass**, **16/16 backend tests pass**, and **7/7 frontend tests pass**.
+> **Phase 5 Status (COMPLETED):**
+> - Independent rule-based conversational assistant implemented in `medibot/`.
+> - Acute emergency interception (112/108/911 guidance) and strict medical advice refusal guardrails verified.
+> - Decoupled tool integration: `MedicineSearchTool` bridges to `core_intelligence.search_engine.matching.search_medicines` via injected Django providers; `PharmacySearchTool` provides honest placeholder contract.
+> - Stateless privacy: Zero persistence of chat transcripts or user queries in database.
+> - REST API endpoint active: `POST /api/v1/chat/` with full validation, HTTP 400 for malformed input, and HTTP 405 for invalid methods.
+> - Verification metrics: **115/115 pytest tests pass** (67 Core Intelligence + 48 MediBot), **29/29 Django backend tests pass**, and **7/7 frontend Vitest tests pass** with clean production build.
 > 
-> Proceed to **Phase 5 (MediBot Conversational Layer)** to build intent parsing, dialogue flows, tool adapters, and medical safety guardrails.
+> Proceed to **Phase 6 (Search & Pharmacy Workflows)** to connect the React frontend to the backend search, geolocation, and chat APIs.

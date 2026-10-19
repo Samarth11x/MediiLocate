@@ -12,7 +12,7 @@ This roadmap establishes the phased engineering plan for developing the **MediLo
 | **Phase 2** | **Frontend Foundation** | React + Vite setup, UI design system, component hierarchy, test suite | **COMPLETED** |
 | **Phase 3** | **Backend & Supabase** | Django REST Framework, database schema, ORM models, API serializers | **COMPLETED** |
 | **Phase 4** | **Core Intelligence** | Medicine search normalization, ranking heuristics, location engine | **COMPLETED** |
-| **Phase 5** | **MediBot Conversational Layer** | Intent recognition, dialogue flows, safety interceptors, tool integration | Planned |
+| **Phase 5** | **MediBot Conversational Layer** | Intent recognition, dialogue flows, safety interceptors, tool integration | **COMPLETED** |
 | **Phase 6** | **Search & Pharmacy Workflows** | End-to-end integration of search, availability, inventory management, chat | Planned |
 | **Phase 7** | **Integration, Security & QA** | E2E testing, penetration checks, performance optimization, release readiness | Planned |
 
@@ -98,18 +98,25 @@ This roadmap establishes the phased engineering plan for developing the **MediLo
 ---
 
 ### Phase 5: MediBot Conversational Layer
-- **Status:** Planned
+- **Status:** **Completed**
 - **Objectives:**
-  - Build standalone conversational logic in `medibot/`.
-  - Implement **Intent Classifier**: Pattern matching and rule-based parsing for user queries (`FIND_MEDICINE`, `CHECK_AVAILABILITY`, `PHARMACY_HOURS`, etc.).
-  - Implement **Safety & Guardrails**:
-    - Emergency symptom detector (chest pain, breathing difficulty, acute trauma).
-    - Prescription restriction filter (prevents diagnosing or altering dosages).
-    - Mandatory medical disclaimer injection.
-  - Implement **Tool Adapters**: Bridges conversational intents to Core Intelligence search and ranking methods.
+  - Build standalone conversational logic in `medibot/` completely decoupled from Django ORM and PostgreSQL.
+  - Implement **Safety Subsystem (`safety/`)**:
+    - `input_validation.py`: Strict type enforcement, length bounding ($\le 500$ chars), and non-string/empty rejection.
+    - `emergency.py`: Acute medical emergency detection (chest pain, breathing difficulty, stroke, overdose, severe hemorrhage) with immediate emergency hotline guidance (112 / 108 / 911).
+    - `safety_rules.py`: Medical advice guardrail intercepting prescription, diagnosis, dosage calculation, and drug alteration requests.
+  - Implement **Intent Classifier (`intents/`)**: Deterministic regex-based classifier with safety precedence covering 8 intents (`EMERGENCY_CONCERN`, `MEDICAL_ADVICE`, `GREETING`, `HOW_IT_WORKS`, `PHARMACY_ONBOARDING`, `AVAILABILITY_HELP`, `PHARMACY_SEARCH`, `MEDICINE_SEARCH`, and `UNKNOWN`).
+  - Implement **Tool Adapters (`tools/`)**:
+    - `MedicineSearchTool`: Delegates to `core_intelligence.search_engine.matching.search_medicines` via injected catalogue provider.
+    - `PharmacySearchTool`: Honest placeholder returning unavailable status without fabricating fake stores.
+  - Implement **Dialogue Manager (`dialogue/`)**: Stateless and multi-turn state coordination (`awaiting_medicine_name`), producing standardized `MediBotResponse` JSON payloads.
+  - Implement **Backend DRF Endpoint**: `POST /api/v1/chat/` with strict payload validation, HTTP 400 for bad inputs, HTTP 405 for invalid methods, and safe HTTP 500 fallback.
+  - Enforce **Stateless Privacy by Design**: Zero database persistence of chat transcripts or queries.
 - **Verification Gate:**
-  - Automated test suite validating that dangerous queries (e.g., "how much medicine should I take?") are intercepted with safety disclaimers.
-  - MediBot operates purely via provided tools without direct database coupling.
+  - 100% pytest pass rate in `medibot/tests/` (48/48 passed).
+  - 100% pass rate in Django test suite (29/29 passed, including 13 chat API tests).
+  - 100% pass rate in `core_intelligence/tests/` (67/67 passed).
+  - Frontend test suite and build remain 100% intact (7/7 Vitest tests, Vite build clean).
 
 ---
 
