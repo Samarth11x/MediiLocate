@@ -9,7 +9,7 @@ This roadmap establishes the phased engineering plan for developing the **MediLo
 | Phase | Milestone | Primary Objective | Status |
 | :---: | :--- | :--- | :---: |
 | **Phase 1** | **Project Foundation** | Engineering standards, directory hierarchy, environment templates, docs | **COMPLETED** |
-| **Phase 2** | **Frontend Foundation** | React + Vite setup, UI design system, component hierarchy, mock services | Planned |
+| **Phase 2** | **Frontend Foundation** | React + Vite setup, UI design system, component hierarchy, test suite | **COMPLETED** |
 | **Phase 3** | **Backend & Supabase** | Django REST Framework, database schema, ORM models, API serializers | Planned |
 | **Phase 4** | **Core Intelligence** | Medicine search normalization, ranking heuristics, location engine | Planned |
 | **Phase 5** | **MediBot Conversational Layer** | Intent recognition, dialogue flows, safety interceptors, tool integration | Planned |
@@ -20,7 +20,7 @@ This roadmap establishes the phased engineering plan for developing the **MediLo
 
 ## Detailed Phase Breakdown
 
-### Phase 1: Project Foundation (Current Milestone)
+### Phase 1: Project Foundation
 - **Status:** **Completed**
 - **Objectives:**
   - Establish complete project folder hierarchy according to the CTO directive.
@@ -35,22 +35,23 @@ This roadmap establishes the phased engineering plan for developing the **MediLo
 
 ---
 
-### Phase 2: Frontend Foundation
-- **Status:** Planned
+### Phase 2: Frontend Foundation & Design System
+- **Status:** **Completed**
 - **Objectives:**
-  - Initialize React application using Vite (`npm create vite@latest frontend -- --template react`).
-  - Configure plain CSS design tokens (typography, colors, spacing, card elevations, accessibility states).
+  - Initialize React 18 + Vite JavaScript application inside `frontend/` using plain CSS.
+  - Formulate and persist Clinical Minimalism design system (`design-system/medilocate-ai/MASTER.md` and `pages/homepage.md`).
+  - Configure CSS design tokens (approved brand colors, typography, spacing, elevations, accessibility focus states).
   - Scaffold core component structures:
-    - `common/`: Buttons, Cards, Badges, Modals, Spinners, Inputs.
-    - `medicine/`: SearchBar, MedicineCard, MedicineDetailModal.
-    - `pharmacy/`: PharmacyList, PharmacyCard, DistanceBadge, AvailabilityTag.
-    - `medibot/`: ChatWidget, MessageList, QuickReplies, SafetyDisclaimerBanner.
-  - Build abstracted API service layer (`frontend/src/services/apiClient.js`).
-  - Setup Vitest and React Testing Library for frontend component unit tests.
+    - `common/`: `BrandMark`, `SiteHeader`, `SiteFooter`, `DemoModeBanner`, `SplashScreen`.
+    - `layouts/`: `MainLayout`.
+    - `pages/`: `HomePage` shell with hero, search validation preview, location preview, How It Works, and partner section.
+  - Setup Vitest and React Testing Library for frontend component unit tests (7/7 tests passing).
+  - Verify production compilation build (`vite build` succeeds).
 - **Verification Gate:**
   - Vite dev server runs without errors.
-  - Component unit tests pass in Vitest.
-  - Mock service layer renders simulated pharmacy and medicine search results.
+  - Component unit tests pass in Vitest (7/7 passing).
+  - Production build succeeds without errors.
+  - Mandatory demo warning present and verified.
 
 ---
 

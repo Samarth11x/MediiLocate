@@ -89,13 +89,72 @@ Before running backend or frontend servers in subsequent phases:
 
 ---
 
-## 5. Current Phase Limitations
+---
+
+## 5. Frontend Development & Verification (PowerShell)
+
+The React + Vite frontend application is located inside the `frontend/` directory.
+
+### 5.1 Navigate to the Frontend Directory
+```powershell
+Set-Location -Path frontend
+# Or: cd frontend
+```
+
+### 5.2 Install Frontend Dependencies
+```powershell
+npm.cmd install
+```
+
+### 5.3 Start the Local Development Server
+```powershell
+npm.cmd run dev
+# Serves the application locally at: http://localhost:5173
+```
+
+### 5.4 Run Frontend Automated Tests
+```powershell
+npm.cmd test
+# Executes the Vitest suite in single-run mode
+```
+
+To run tests in watch mode during development:
+```powershell
+npm.cmd run test:watch
+```
+
+### 5.5 Build for Production
+```powershell
+npm.cmd run build
+# Compiles optimized HTML, CSS, and JS bundles to: frontend/dist/
+```
+
+---
+
+## 6. Design Intelligence Tooling Setup (Optional References)
+
+### 6.1 UI/UX Pro Max CLI
+To install and initialize the UI/UX Pro Max design intelligence skill locally:
+```powershell
+npm.cmd install -g ui-ux-pro-max-cli
+uipro init --ai antigravity
+```
+
+### 6.2 21st.dev Component Catalog CLI
+To install and authenticate the 21st.dev catalog CLI:
+```powershell
+npm.cmd install -g @21st-dev/cli
+21st login
+```
+
+---
+
+## 7. Current Phase Status
 
 > [!IMPORTANT]
-> **Phase 1 Foundation Status:**
-> - Neither npm packages nor Python packages are installed in this phase.
-> - The Django application and Vite frontend have not yet been scaffolded.
-> - No local servers (e.g. port 8000 or port 5173) are running.
-> - No Supabase database tables or connections are currently active.
+> **Phase 2 Status (COMPLETED):**
+> - The React + Vite JavaScript frontend shell and **Clinical Minimalism** design system are fully implemented and verified.
+> - Vitest component testing passes with 100% success rate (7/7 tests).
+> - Production asset building compiles cleanly without warnings.
 > 
-> Proceed to **Phase 2 (Frontend Foundation)** and **Phase 3 (Backend & Supabase)** when prompted to begin code and package installation.
+> Proceed to **Phase 3 (Backend & Supabase Setup)** to configure the Django REST Framework API and database schema.
