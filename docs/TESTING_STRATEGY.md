@@ -49,13 +49,29 @@ graph TD
     - Expected output: Emergency alert message with immediate local emergency hotline numbers.
   - **Tool Execution:** Verifying that search intents correctly format and invoke Core Intelligence methods.
 
-### 2.3 Backend API Integration Tests (`backend/tests/`)
-- **Framework:** Django Test Runner / `pytest-django` with `rest_framework.test.APIClient`
-- **Coverage Criteria:**
-  - Endpoint validation and HTTP status codes (`GET /api/v1/search/`, `POST /api/v1/chat/`).
-  - Serializer field validation and error message formatting.
-  - Role-based permissions (Customers vs. Pharmacy Managers vs. Admins).
-  - Database transaction rollbacks: Each test runs inside an atomic transaction that is rolled back upon completion to ensure zero side-effects.
+### 2.3 Backend API & Model Tests (`backend/tests/`)
+- **Framework:** Django Test Runner (`backend/manage.py test tests apps`) with `rest_framework.test.APIClient`
+- **Execution:** Runs in an isolated SQLite in-memory/temp database, executing all migrations and ensuring zero pollution of production databases.
+- **Implemented Test Coverage (16 Tests Passing):**
+  - **Health Endpoint (`backend/tests/test_health.py`):**
+    - `test_health_check_returns_200_ok`: Asserts HTTP 200 and JSON structure `{status: 'ok', service: 'MediLocate API'}`.
+    - `test_health_check_method_not_allowed`: Asserts POST returns HTTP 405 Method Not Allowed.
+  - **Pharmacy Model (`backend/tests/test_models.py`):**
+    - `test_pharmacy_creation`: Verifies required fields, string representation (`Name (Area)`), and active/demo defaults.
+    - `test_pharmacy_latitude_validations`: Enforces WGS84 range `[-90, 90]` (rejects < -90 or > 90).
+    - `test_pharmacy_longitude_validations`: Enforces WGS84 range `[-180, 180]` (rejects < -180 or > 180).
+    - `test_pharmacy_verification_status_choices`: Validates choices (`PENDING`, `VERIFIED`, `REJECTED`).
+  - **Medicine Model (`backend/tests/test_models.py`):**
+    - `test_medicine_creation`: Verifies fields and string representation (`Brand (Generic) - Strength DosageForm`).
+    - `test_medicine_search_aliases_json`: Verifies JSON list alias storage for search normalization.
+  - **Inventory Model (`backend/tests/test_models.py`):**
+    - `test_inventory_creation`: Verifies FK relationships to Pharmacy and Medicine.
+    - `test_inventory_unique_pharmacy_medicine`: Enforces `UniqueConstraint(pharmacy, medicine)` at database level.
+    - `test_inventory_quantity_nullable_and_non_negative`: Verifies nullable quantity and prevents negative stock values.
+    - `test_inventory_price_non_negative`: Enforces unit price >= 0.00.
+    - `test_inventory_cascade_on_pharmacy_delete`: Asserts deleting a pharmacy cascades to its inventory records.
+    - `test_inventory_protect_on_medicine_delete`: Asserts deleting a medicine is RESTRICTED if stocked in inventory.
+    - `test_inventory_availability_status_calculation`: Verifies dynamic computation for `UNKNOWN` (None), `OUT_OF_STOCK` (0), `LOW_STOCK` (1..9), and `AVAILABLE` (>= 10).
 
 ### 2.4 Frontend Component & UI Tests (`frontend/src/tests/`)
 - **Framework:** `vitest` + `@testing-library/react` + `@testing-library/jest-dom`

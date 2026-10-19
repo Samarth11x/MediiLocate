@@ -10,7 +10,7 @@ This roadmap establishes the phased engineering plan for developing the **MediLo
 | :---: | :--- | :--- | :---: |
 | **Phase 1** | **Project Foundation** | Engineering standards, directory hierarchy, environment templates, docs | **COMPLETED** |
 | **Phase 2** | **Frontend Foundation** | React + Vite setup, UI design system, component hierarchy, test suite | **COMPLETED** |
-| **Phase 3** | **Backend & Supabase** | Django REST Framework, database schema, ORM models, API serializers | Planned |
+| **Phase 3** | **Backend & Supabase** | Django REST Framework, database schema, ORM models, API serializers | **COMPLETED** |
 | **Phase 4** | **Core Intelligence** | Medicine search normalization, ranking heuristics, location engine | Planned |
 | **Phase 5** | **MediBot Conversational Layer** | Intent recognition, dialogue flows, safety interceptors, tool integration | Planned |
 | **Phase 6** | **Search & Pharmacy Workflows** | End-to-end integration of search, availability, inventory management, chat | Planned |
@@ -56,18 +56,24 @@ This roadmap establishes the phased engineering plan for developing the **MediLo
 ---
 
 ### Phase 3: Backend & Supabase Database
-- **Status:** Planned
+- **Status:** **Completed**
 - **Objectives:**
-  - Initialize Python virtual environment (`venv`) and install Django & Django REST Framework.
-  - Create Django apps: `accounts`, `pharmacies`, `medicines`, `inventory`, `search`.
-  - Connect Django ORM to Supabase-hosted PostgreSQL instance via environment variables.
-  - Author and apply initial database migrations for `pharmacies`, `medicines`, and `inventory`.
-  - Create REST serializers and basic CRUD/query endpoints with request validation.
-  - Populate database with safe, fictional seed data for development.
+  - Initialize Python virtual environment (`venv`) and install pinned dependencies: Django 5.1+, Django REST Framework 3.17+, Psycopg 3 (with precompiled Windows wheels), and django-cors-headers.
+  - Structure modular Django applications under `backend/apps/`: `pharmacies`, `medicines`, `inventory`, `accounts`, `search`.
+  - Implement enterprise-grade database configuration in `backend/config/settings.py` for Supabase PostgreSQL (SSL `require`, session pooler support) with automatic fallback to local SQLite for offline development.
+  - Implement relational domain models with database-level constraints:
+    - `Pharmacy`: WGS84 latitude/longitude range validation (`[-90, 90]`, `[-180, 180]`), verification status workflow (`PENDING`, `VERIFIED`, `REJECTED`), JSON operating hours, and demo flag.
+    - `Medicine`: Catalog model decoupled from pharmacy stock, capturing generic and brand names, dosage form, strength, and search aliases.
+    - `Inventory`: Links pharmacy and medicine via `UniqueConstraint(pharmacy, medicine)`, non-negative price/quantity checks, nullable quantity for unknown stock, and dynamic `get_availability_status()` evaluation.
+  - Generate initial Django migrations (`0001_initial.py` for medicines, pharmacies, inventory).
+  - Implement lightweight `/api/v1/health/` liveness check endpoint returning `{ "status": "ok", "service": "MediLocate API" }`.
+  - Register domain models with Django Admin interface (`apps/*/admin.py`).
+  - Construct comprehensive automated backend test suite (16/16 tests passing).
 - **Verification Gate:**
-  - Django server starts (`python manage.py runserver`).
-  - Database migrations apply cleanly to Supabase PostgreSQL.
+  - Django system check passes with 0 issues (`python backend/manage.py check`).
   - Health check endpoint `/api/v1/health/` returns `200 OK`.
+  - Backend test suite passes 100% (16/16 tests in `backend/tests/`).
+  - Frontend test suite remains intact with zero regressions (7/7 Vitest tests).
 
 ---
 

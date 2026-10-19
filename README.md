@@ -97,21 +97,23 @@ MediLocate/
 
 ## 4. Current Development Phase
 
-> **Phase 2: Frontend Foundation & Design System (COMPLETED)**
-> - Scaffolded React 18 + Vite JavaScript application inside `frontend/` using plain CSS and zero framework bloat.
-> - Formulated and persisted **Clinical Minimalism** design system guided by UI/UX Pro Max and 21st.dev references in `design-system/medilocate-ai/MASTER.md`.
-> - Authored reusable design tokens for approved brand palette (Teal Green, Deep Navy, Soft White, Light Mint, Dark Slate).
-> - Built responsive navigation header with accessible mobile toggle drawer.
-> - Implemented brief branded splash screen (600-850ms) with `prefers-reduced-motion` bypass.
-> - Developed responsive homepage shell featuring hero, search validation preview, location preview, How It Works guide, and partner section.
-> - Integrated mandatory demo warning banner prominently across layouts.
-> - Configured Vitest + React Testing Library suite with 7/7 passing unit tests and verified production build.
+> **Phase 3: Backend & Supabase Foundation (COMPLETED)**
+> - Scaffolded Django 5.1+ and Django REST Framework backend application in `backend/` with Psycopg 3 PostgreSQL integration.
+> - Configured enterprise-ready Supabase PostgreSQL database connectivity with SSL (`require`), connection pooling documentation, and safe local SQLite fallback for offline development.
+> - Built domain models with strict relational integrity, check constraints, and indexing:
+>   - `apps.pharmacies`: `Pharmacy` model with WGS84 geo-coordinate validation (`[-90, 90]`, `[-180, 180]`), verification status workflow, operating hours JSON, and demo flagging.
+>   - `apps.medicines`: `Medicine` catalog model decoupled from pharmacy stock, supporting generic & brand names, strengths, forms, and search aliases.
+>   - `apps.inventory`: `Inventory` model with `UniqueConstraint(pharmacy, medicine)`, non-negative price/quantity checks, nullable quantity support for unknown stock, and dynamic `get_availability_status()` evaluation.
+> - Implemented `/api/v1/health/` liveness endpoint returning `{"status": "ok", "service": "MediLocate API"}` with HTTP 200.
+> - Registered domain models with Django Admin interface (`backend/apps/*/admin.py`).
+> - Established automated backend test suite with 16/16 tests passing in `backend/tests/`.
+> - Verified frontend suite remains completely intact (7/7 Vitest tests passing, production build passing).
 
 ---
 
 ## 5. Next Steps
 
-1. **Phase 3: Backend & Supabase Setup:** Scaffold the Django REST Framework backend, configure PostgreSQL connection parameters, and establish app structures.
-2. **Phase 4: Core Intelligence Implementation:** Implement distance calculation, medicine ranking heuristics, and availability rules with isolated pytest suites.
-3. **Phase 5: MediBot Development:** Build intent parsing, conversational dialogue flows, and strict medical disclaimer safety guards.
-4. **Phase 6: Search & Pharmacy Workflows:** End-to-end integration between frontend, backend, and core algorithms.
+1. **Phase 4: Core Intelligence Implementation:** Implement distance calculation (Haversine formula), medicine ranking heuristics, and availability rules as a standalone Python package with isolated pytest suites.
+2. **Phase 5: MediBot Development:** Build intent parsing, conversational dialogue flows, tool adapters, and strict medical disclaimer safety guards.
+3. **Phase 6: Search & Pharmacy Workflows:** End-to-end integration between frontend React UI, backend DRF endpoints, and core intelligence algorithms.
+4. **Phase 7: Integration, Security & QA:** E2E user journeys, rate limiting, audit logging, and production readiness.

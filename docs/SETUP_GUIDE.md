@@ -13,7 +13,7 @@ Ensure the following prerequisites are installed before beginning later implemen
 | **Node.js** | v18.0.0+ | **v24.22.0** (Detected) | `winget install OpenJS.NodeJS.LTS` |
 | **npm** | v9.0.0+ | **v11.19.1** (Detected) | Included with Node.js |
 | **Python** | v3.11.0+ | **v3.13.5** (Detected) | `winget install Python.Python.3.13` |
-| **Git** | v2.35.0+ | *Not yet detected in PATH* | `winget install --id Git.Git -e --source winget` |
+| **Git** | v2.35.0+ | **v2.48.1** (`C:\Program Files\Git\cmd\git.exe`) | `winget install --id Git.Git -e --source winget` |
 
 ---
 
@@ -33,10 +33,11 @@ You have two options:
   ```
 
 - **Option B (Direct Command Execution):**
-  Explicitly invoke `.cmd` binaries instead of `.ps1`:
+  Explicitly invoke `.cmd` binaries or full executable paths instead of `.ps1`:
   ```powershell
   npm.cmd -v
   npx.cmd vite
+  & "C:\Program Files\Git\cmd\git.exe" status
   ```
 
 ### 2.2 Installing and Configuring Git on Windows
@@ -45,7 +46,10 @@ If `git` is not recognized in your terminal:
    ```powershell
    winget install --id Git.Git -e --source winget
    ```
-2. Restart your terminal to refresh system environment variables (`PATH`).
+2. Restart your terminal or add Git to your user PATH:
+   ```powershell
+   $env:Path += ";C:\Program Files\Git\cmd"
+   ```
 3. Configure your Git identity:
    ```powershell
    git config --global user.name "Your Name"
@@ -54,97 +58,127 @@ If `git` is not recognized in your terminal:
 
 ---
 
-## 3. Python Virtual Environment Setup (For Future Phases)
+## 3. Python Virtual Environment Setup & Backend Dependencies
 
-In Phase 3 (Backend Setup), you will configure an isolated Python virtual environment:
+The project uses an isolated Python virtual environment (`venv`) located at the project root.
 
-1. **Create the virtual environment** in the project root:
-   ```powershell
-   python -m venv venv
-   ```
+### 3.1 Activate the Virtual Environment
+```powershell
+.\venv\Scripts\Activate.ps1
+```
+*(If script execution is disabled, you can directly invoke the virtual environment's Python binary: `.\venv\Scripts\python.exe`).*
 
-2. **Activate the virtual environment**:
-   ```powershell
-   .\venv\Scripts\Activate.ps1
-   ```
-   *(If prompted with an execution policy error, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` first).*
-
-3. **Verify Python points to the virtual environment**:
-   ```powershell
-   Get-Command python | Select-Object -ExpandProperty Source
-   # Should output: ...\MediLocate\venv\Scripts\python.exe
-   ```
+### 3.2 Install Backend Dependencies
+```powershell
+.\venv\Scripts\python.exe -m pip install -r backend/requirements.txt
+```
+Pinned dependencies include:
+- `Django==5.1.15`
+- `djangorestframework==3.17.2`
+- `psycopg[binary]==3.3.6` (Psycopg 3 with precompiled Windows wheels)
+- `django-cors-headers==4.9.0`
+- `python-dotenv==1.2.4`
 
 ---
 
-## 4. Environment Variables Configuration
+## 4. Backend Development & Verification (PowerShell)
 
-Before running backend or frontend servers in subsequent phases:
-1. Copy `.env.example` to create a local `.env` file:
+### 4.1 Django System Integrity Check
+```powershell
+.\venv\Scripts\python.exe backend/manage.py check
+```
+
+### 4.2 Run Database Migrations
+```powershell
+.\venv\Scripts\python.exe backend/manage.py migrate
+```
+*(By default, if Supabase credentials are not provided in `.env`, Django safely initializes a local development SQLite database: `backend/db.sqlite3`)*.
+
+### 4.3 Run Automated Backend Tests
+```powershell
+.\venv\Scripts\python.exe backend/manage.py test tests apps
+```
+Runs 16 unit tests covering `/api/v1/health/`, model integrity, geo-coordinate validation, and dynamic availability evaluation.
+
+### 4.4 Start the Django Development Server
+```powershell
+.\venv\Scripts\python.exe backend/manage.py runserver 127.0.0.1:8000
+```
+Server runs at: `http://127.0.0.1:8000/`
+
+### 4.5 Verify the Health Check Endpoint
+In PowerShell:
+```powershell
+Invoke-RestMethod -Uri http://127.0.0.1:8000/api/v1/health/
+# Returns: @{status=ok; service=MediLocate API}
+```
+Or via curl:
+```bash
+curl http://127.0.0.1:8000/api/v1/health/
+```
+
+---
+
+## 5. Connecting to Supabase PostgreSQL
+
+To switch from the local SQLite fallback to your live Supabase database:
+
+1. Copy `.env.example` to create your local `.env`:
    ```powershell
    Copy-Item .env.example .env
    ```
-2. Open `.env` and fill in your local or Supabase development parameters.
-3. **Security Rule:** Never check `.env` into version control. Ensure `.gitignore` remains active.
+2. In Supabase Dashboard -> **Project Settings** -> **Database**:
+   - For **IPv4 networks (recommended)**: Copy the **Session pooler** connection string:
+     - Host: `aws-0-[REGION].pooler.supabase.com`
+     - Port: `5432` or `6543`
+     - User: `postgres.[YOUR_PROJECT_REF]`
+     - Password: Your project database password
+   - For **IPv6 networks**: Copy direct connection:
+     - Host: `db.[YOUR_PROJECT_REF].supabase.co`
+     - Port: `5432`
+     - User: `postgres`
+3. Update `.env`:
+   ```ini
+   SUPABASE_DB_HOST=aws-0-ap-south-1.pooler.supabase.com
+   SUPABASE_DB_PORT=5432
+   SUPABASE_DB_NAME=postgres
+   SUPABASE_DB_USER=postgres.yourprojectref
+   SUPABASE_DB_PASSWORD=YourSecurePassword
+   SUPABASE_DB_SSLMODE=require
+   ```
+4. Run migrations to provision tables on Supabase:
+   ```powershell
+   .\venv\Scripts\python.exe backend/manage.py migrate
+   ```
 
 ---
 
----
+## 6. Frontend Development & Verification (PowerShell)
 
-## 5. Frontend Development & Verification (PowerShell)
+The React + Vite frontend application is located inside `frontend/`.
 
-The React + Vite frontend application is located inside the `frontend/` directory.
-
-### 5.1 Navigate to the Frontend Directory
+### 6.1 Install Frontend Dependencies
 ```powershell
-Set-Location -Path frontend
-# Or: cd frontend
-```
-
-### 5.2 Install Frontend Dependencies
-```powershell
+cd frontend
 npm.cmd install
 ```
 
-### 5.3 Start the Local Development Server
+### 6.2 Start the Local Development Server
 ```powershell
 npm.cmd run dev
 # Serves the application locally at: http://localhost:5173
 ```
 
-### 5.4 Run Frontend Automated Tests
+### 6.3 Run Frontend Automated Tests
 ```powershell
 npm.cmd test
-# Executes the Vitest suite in single-run mode
+# Executes the Vitest suite (7/7 tests passing)
 ```
 
-To run tests in watch mode during development:
-```powershell
-npm.cmd run test:watch
-```
-
-### 5.5 Build for Production
+### 6.4 Build for Production
 ```powershell
 npm.cmd run build
-# Compiles optimized HTML, CSS, and JS bundles to: frontend/dist/
-```
-
----
-
-## 6. Design Intelligence Tooling Setup (Optional References)
-
-### 6.1 UI/UX Pro Max CLI
-To install and initialize the UI/UX Pro Max design intelligence skill locally:
-```powershell
-npm.cmd install -g ui-ux-pro-max-cli
-uipro init --ai antigravity
-```
-
-### 6.2 21st.dev Component Catalog CLI
-To install and authenticate the 21st.dev catalog CLI:
-```powershell
-npm.cmd install -g @21st-dev/cli
-21st login
+# Compiles optimized bundles to: frontend/dist/
 ```
 
 ---
@@ -152,9 +186,10 @@ npm.cmd install -g @21st-dev/cli
 ## 7. Current Phase Status
 
 > [!IMPORTANT]
-> **Phase 2 Status (COMPLETED):**
-> - The React + Vite JavaScript frontend shell and **Clinical Minimalism** design system are fully implemented and verified.
-> - Vitest component testing passes with 100% success rate (7/7 tests).
-> - Production asset building compiles cleanly without warnings.
+> **Phase 3 Status (COMPLETED):**
+> - The Django REST Framework backend foundation is fully operational.
+> - Models (`Pharmacy`, `Medicine`, `Inventory`) and migrations are in place.
+> - Health endpoint `/api/v1/health/` returns `200 OK`.
+> - Automated test suites: **16/16 backend tests pass** and **7/7 frontend tests pass**.
 > 
-> Proceed to **Phase 3 (Backend & Supabase Setup)** to configure the Django REST Framework API and database schema.
+> Proceed to **Phase 4 (Core Intelligence)** to implement search normalization, ranking heuristics, and Haversine geospatial calculations.

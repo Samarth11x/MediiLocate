@@ -1,0 +1,1 @@
+# MediLocate AI - Pharmacies Application

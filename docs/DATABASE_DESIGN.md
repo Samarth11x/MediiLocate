@@ -1,8 +1,8 @@
 # MediLocate AI — Database Design Specification
 
 > [!NOTE]
-> **Status:** Planned Specification
-> The database schema described in this document is a comprehensive design blueprint. **It is not yet implemented or applied to any database instance.** Implementation and migrations will occur in **Phase 3 (Backend & Supabase)**.
+> **Status:** Phase 3 Implemented Foundation (Core Tables) & Planned Extensions (Audit & User Roles)
+> The core domain entities (`pharmacies`, `medicines`, `inventory`) have been formally defined in Django ORM models and initial database migrations (`0001_initial.py`) in Phase 3. The `users` / role management and `inventory_audit_log` tables remain planned specifications for future phases.
 
 ---
 
@@ -145,19 +145,23 @@ Real-time stock levels of medicines stocked at specific pharmacies.
 - `id` (UUID, Primary Key, `default gen_random_uuid()`).
 - `pharmacy_id` (UUID, Foreign Key -> `pharmacies(id)`, Not Null, `ON DELETE CASCADE`).
 - `medicine_id` (UUID, Foreign Key -> `medicines(id)`, Not Null, `ON DELETE RESTRICT`).
-- `quantity` (INTEGER, Not Null, `default 0`): Available unit count.
-- `unit_price` (NUMERIC(10, 2), Not Null): Current price per standard unit.
-- `batch_number` (VARCHAR(100), Not Null): Pharmaceutical lot identifier.
-- `expiry_date` (DATE, Not Null): Expiration date of the current batch.
-- `stock_status` (VARCHAR(30), Not Null): Categorical status (`'IN_STOCK'`, `'LOW_STOCK'`, `'OUT_OF_STOCK'`).
+- `quantity` (INTEGER, Nullable, `default None`): Available unit count. Nullable to cleanly distinguish between unknown/unconfirmed stock (`None`) and confirmed zero stock (`0`).
+- `unit_price` (NUMERIC(10, 2), Not Null, `default 0.00`): Current price per standard unit.
 - `last_updated` (TIMESTAMPTZ, Not Null, `default now()`).
+- `is_demo` (BOOLEAN, Not Null, `default True`): Demo data flag.
+
+**Dynamic Status vs Static Column:**
+Rather than maintaining a desynchronized text column (`stock_status`), status is computed in real time via `inventory.get_availability_status()`:
+- `quantity is None` -> `'UNKNOWN'`
+- `quantity == 0` -> `'OUT_OF_STOCK'`
+- `quantity < 10` -> `'LOW_STOCK'`
+- `quantity >= 10` -> `'AVAILABLE'`
 
 **Integrity Constraints & Indexes:**
-- `CHECK (quantity >= 0)`
+- `CHECK (quantity >= 0 OR quantity IS NULL)`
 - `CHECK (unit_price >= 0.00)`
-- `CHECK (stock_status IN ('IN_STOCK', 'LOW_STOCK', 'OUT_OF_STOCK'))`
-- `UNIQUE (pharmacy_id, medicine_id, batch_number)`
-- `INDEX idx_inventory_lookup ON inventory (medicine_id, pharmacy_id, stock_status)`
+- `UNIQUE (pharmacy_id, medicine_id)`
+- `INDEX idx_inventory_lookup ON inventory (medicine_id, pharmacy_id)`
 
 ### 2.5 `inventory_audit_log`
 Immutable regulatory log tracking every stock modification.

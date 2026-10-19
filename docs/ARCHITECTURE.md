@@ -50,10 +50,16 @@ graph TD
 - **No Secrets Policy:** Only public environment variables (such as `VITE_API_BASE_URL`) may be bundled. No database connection strings or administrative API keys are ever stored in frontend assets.
 
 ### 2.2 Backend (`backend/`)
-- **API Endpoints & Routing:** Exposes RESTful endpoints for medicine lookup, pharmacy geolocation, stock inquiries, and chat interactions.
-- **Request Validation & Security:** Sanitizes and validates all client payloads before processing. Handles CORS, rate-limiting, and error formatting.
+- **API Endpoints & Routing:** Exposes RESTful endpoints built with Django REST Framework (DRF). Currently serving `/api/v1/health/` liveness check, with modular routers for medicine lookup, pharmacy geolocation, stock inquiries, and chat interactions.
+- **Request Validation & Security:** Sanitizes and validates all client payloads before processing. Configured with explicit CORS headers (`django-cors-headers`), secure session cookies, and standardized JSON error formatting.
 - **Domain Orchestration:** Coordinates data fetching from PostgreSQL, formats inputs for `core_intelligence`, and dispatches conversation inputs to `medibot`.
-- **Authentication & Authorization:** Integrates role-based access control (Customers, Pharmacy Managers, Administrators) using secure session or JWT tokens.
+- **Modular App Architecture:**
+  - `apps.pharmacies`: Manages licensed pharmacy records, WGS84 geo-coordinates, operating hours, and verification status.
+  - `apps.medicines`: Standardized pharmaceutical product catalog (generic and brand names, forms, dosages, search aliases) decoupled from pharmacy inventory.
+  - `apps.inventory`: Relational junction mapping medicines to pharmacies with stock quantities, unit pricing, timestamps, and dynamic availability classification (`get_availability_status`).
+  - `apps.accounts`: Authentication and user profile scaffolding (planned for future phase).
+  - `apps.search`: Search orchestration endpoints (planned for Phase 6).
+- **Database Connection Strategy:** Uses `psycopg` (Psycopg 3) with SSL (`require`) connecting to Supabase PostgreSQL (IPv4 session-pooler or direct IPv6), with an automatic fallback to local SQLite for offline developer environments.
 
 ### 2.3 Core Intelligence (`core_intelligence/`)
 - **Search Engine (`search_engine/`):** Normalizes brand vs. generic names, handles fuzzy keyword matching, and performs phonetically similar ingredient lookups.
@@ -145,3 +151,4 @@ sequenceDiagram
    - *Rationale:* Eliminates exposed database credentials, enforces server-side business rules, guarantees audit logging on inventory adjustments, and prevents client tampering with stock levels.
 2. **PostgreSQL Relational Integrity:** We use foreign keys with cascading restrictions (`ON DELETE RESTRICT`) on critical medical and inventory records to prevent orphaned stock data.
 3. **Fictional Test Data Isolation:** Initial development and demonstration environments utilize strictly fictional pharmacies and medicine inventory records to prevent confusion with real medical establishments.
+4. **Dynamic Stock Classification vs Redundant Columns:** Rather than persisting a static, desynchronized `stock_status` text column in the `inventory` table, availability status is dynamically evaluated via the `get_availability_status()` model method based on real-time `quantity` (`NULL` -> `UNKNOWN`, `0` -> `OUT_OF_STOCK`, `<10` -> `LOW_STOCK`, `>=10` -> `AVAILABLE`), ensuring single source of truth.

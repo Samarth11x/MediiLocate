@@ -1,0 +1,11 @@
+# MediLocate AI - Backend Pinned Dependencies
+# Compatible with Python 3.11, 3.12, and 3.13 on Windows / Linux / macOS
+
+Django==5.1.15
+djangorestframework==3.17.2
+psycopg[binary]==3.3.6
+django-cors-headers==4.9.0
+python-dotenv==1.2.4
+asgiref==3.12.1
+sqlparse==0.6.0
+tzdata==2026.5
