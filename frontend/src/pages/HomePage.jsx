@@ -1,27 +1,68 @@
 import React, { useState } from 'react';
+import { searchMedicines } from '../services/medicineService';
+import { useGeolocation } from '../hooks/useGeolocation';
+import SearchResults from '../components/medicine/SearchResults';
+import MediBotDrawer from '../components/medibot/MediBotDrawer';
 
 /**
  * HomePage
  * Shell for MediLocate AI featuring hero messaging, search input validation preview,
  * planned location explanation, How It Works guide, and partner information.
+ * Connected in Phase 6 to Django backend and Core Intelligence search.
  */
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchStatus, setSearchStatus] = useState(null); // null | 'empty_error' | 'planned_info'
   const [submittedQuery, setSubmittedQuery] = useState('');
 
-  const handleSearchSubmit = (e) => {
+  // Phase 6 Live Search State
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState(null);
+  const [searchResults, setSearchResults] = useState(null);
+
+  // Privacy-preserving Geolocation
+  const {
+    coords,
+    loading: geoLoading,
+    error: geoError,
+    requestLocation,
+    clearLocation,
+  } = useGeolocation();
+
+  const handleSearchSubmit = async (e) => {
     e.preventDefault();
     const query = searchQuery.trim();
 
     if (!query) {
       setSearchStatus('empty_error');
       setSubmittedQuery('');
+      setSearchResults(null);
+      setSearchError(null);
       return;
     }
 
     setSubmittedQuery(query);
     setSearchStatus('planned_info');
+    setIsSearching(true);
+    setSearchError(null);
+
+    try {
+      const options = coords ? { lat: coords.lat, lon: coords.lon } : {};
+      const data = await searchMedicines(query, options);
+      setSearchResults(data);
+    } catch (err) {
+      setSearchError(err.message || 'Unable to connect to search service.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleClearResults = () => {
+    setSearchResults(null);
+    setSearchError(null);
+    setSearchStatus(null);
+    setSubmittedQuery('');
+    setSearchQuery('');
   };
 
   return (
@@ -72,9 +113,14 @@ export default function HomePage() {
                     }}
                     aria-describedby={searchStatus ? 'search-feedback-message' : undefined}
                     autoComplete="off"
+                    disabled={isSearching}
                   />
-                  <button type="submit" className="search-form__button">
-                    Search Medicine
+                  <button
+                    type="submit"
+                    className="search-form__button"
+                    disabled={isSearching}
+                  >
+                    {isSearching ? 'Searching...' : 'Search Medicine'}
                   </button>
                 </div>
               </div>
@@ -110,36 +156,87 @@ export default function HomePage() {
             )}
 
             {/* ================================================================
-                C. LOCATION PREVIEW
+                C. LOCATION PREVIEW & CONTROL
                 ================================================================ */}
             <div className="location-preview-card">
-              <svg
-                className="location-preview-card__icon"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
-              <span>
-                <strong>Proximity Ranking (Planned):</strong> Automatic distance calculations and
-                geo-radius filtering will be enabled in Phase 4. Your browser location is not
-                requested in this phase.
-              </span>
+              <div className="location-preview-card__main">
+                <svg
+                  className="location-preview-card__icon"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                <div className="location-preview-card__details">
+                  <span>
+                    <strong>Proximity Ranking (Planned):</strong> Automatic distance calculations and
+                    geo-radius filtering are powered by Core Intelligence. Your location is never requested automatically.
+                  </span>
+                  {coords && (
+                    <div className="location-preview-card__status location-preview-card__status--active">
+                      <span className="location-active-indicator" aria-hidden="true" />
+                      <span>
+                        Location active: {coords.lat.toFixed(4)}, {coords.lon.toFixed(4)} (Proximity enabled)
+                      </span>
+                    </div>
+                  )}
+                  {geoError && (
+                    <div className="location-preview-card__status location-preview-card__status--error">
+                      <span>{geoError}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="location-preview-card__actions">
+                {!coords ? (
+                  <button
+                    type="button"
+                    className="location-btn location-btn--request"
+                    onClick={requestLocation}
+                    disabled={geoLoading}
+                    aria-label="Enable location for proximity ranking"
+                  >
+                    {geoLoading ? 'Detecting...' : 'Use My Location'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="location-btn location-btn--clear"
+                    onClick={clearLocation}
+                    aria-label="Clear active location"
+                  >
+                    Clear Location
+                  </button>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* ==================================================================
+              D. LIVE SEARCH RESULTS
+              ================================================================== */}
+          {(isSearching || searchError || searchResults) && (
+            <SearchResults
+              isLoading={isSearching}
+              error={searchError}
+              results={searchResults}
+              searchQuery={submittedQuery}
+              onClear={handleClearResults}
+            />
+          )}
         </div>
       </section>
 
       {/* ====================================================================
-          D. HOW IT WORKS SECTION
+          E. HOW IT WORKS SECTION
           ==================================================================== */}
       <section
         className="section-block section-block--alt"
@@ -196,7 +293,7 @@ export default function HomePage() {
       </section>
 
       {/* ====================================================================
-          E. PHARMACY PARTNER SECTION
+          F. PHARMACY PARTNER SECTION
           ==================================================================== */}
       <section
         className="section-block"
@@ -250,6 +347,11 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ====================================================================
+          G. MEDIBOT CONVERSATIONAL ASSISTANT DRAWER
+          ==================================================================== */}
+      <MediBotDrawer />
     </div>
   );
 }

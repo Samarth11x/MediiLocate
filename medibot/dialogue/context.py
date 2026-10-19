@@ -18,9 +18,19 @@ class ConversationContext:
     """
     last_intent: Optional[str] = None
     searched_medicine: Optional[str] = None
+    searched_medicine_id: Optional[str] = None
     step: Optional[str] = None
+    user_lat: Optional[float] = None
+    user_lon: Optional[float] = None
 
-    WHITELISTED_KEYS = {"last_intent", "searched_medicine", "step"}
+    WHITELISTED_KEYS = {
+        "last_intent",
+        "searched_medicine",
+        "searched_medicine_id",
+        "step",
+        "user_lat",
+        "user_lon",
+    }
 
     @classmethod
     def from_dict(cls, data: Optional[Dict[str, Any]]) -> ConversationContext:
@@ -28,11 +38,16 @@ class ConversationContext:
         if not data or not isinstance(data, dict):
             return cls()
 
-        clean_kwargs = {
-            k: str(v)[:100]  # Cap string lengths to prevent memory injection
-            for k, v in data.items()
-            if k in cls.WHITELISTED_KEYS and v is not None
-        }
+        clean_kwargs: Dict[str, Any] = {}
+        for k, v in data.items():
+            if k in cls.WHITELISTED_KEYS and v is not None:
+                if k in {"user_lat", "user_lon"}:
+                    try:
+                        clean_kwargs[k] = float(v)
+                    except (ValueError, TypeError):
+                        pass
+                else:
+                    clean_kwargs[k] = str(v)[:100]  # Cap string lengths to prevent memory injection
         return cls(**clean_kwargs)
 
     def to_dict(self) -> Dict[str, Any]:

@@ -23,3 +23,8 @@ if (typeof window !== 'undefined') {
     }),
   });
 }
+
+// Polyfill Element.prototype.scrollIntoView for jsdom
+if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}

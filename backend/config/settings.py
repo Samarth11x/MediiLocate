@@ -47,7 +47,7 @@ if DJANGO_ENV == 'production' and DEBUG:
 # Allowed hosts
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+    for host in os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',')
     if host.strip()
 ]
 

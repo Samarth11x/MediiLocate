@@ -24,6 +24,7 @@ from medibot.dialogue.responses import (
     MEDICINE_CLARIFICATION_MESSAGE,
     MEDICINE_CLARIFICATION_SUGGESTIONS,
     format_medicine_search_response,
+    format_pharmacy_search_response,
 )
 from medibot.intents.patterns import IntentType
 from medibot.intents.classifier import classify_intent
@@ -149,12 +150,70 @@ class DialogueManager:
             )
 
         if intent_result.intent == IntentType.PHARMACY_SEARCH:
-            tool_res = self.pharmacy_tool.search_pharmacies(query=cleaned_message)
+            # If user mentions a specific medicine inline, extract it
+            if not conv_context.searched_medicine:
+                import re
+                med_match = re.search(
+                    r"(?:for|stocking|with|having)\s+([a-zA-Z0-9\s]+)",
+                    cleaned_message,
+                    re.IGNORECASE,
+                )
+                if med_match:
+                    candidate = med_match.group(1).strip()
+                    if candidate.lower() not in {"me", "us", "you", "here", "my area", "the area"}:
+                        conv_context.searched_medicine = candidate
+
+            tool_res = self.pharmacy_tool.search_pharmacies(
+                query=cleaned_message,
+                medicine_name=conv_context.searched_medicine,
+                medicine_id=conv_context.searched_medicine_id,
+                lat=conv_context.user_lat,
+                lon=conv_context.user_lon,
+            )
+
+            if tool_res.status == "success":
+                has_loc = conv_context.user_lat is not None and conv_context.user_lon is not None
+                formatted_text = format_pharmacy_search_response(
+                    results=tool_res.data,
+                    medicine_name=conv_context.searched_medicine,
+                    has_location=has_loc,
+                )
+                return MediBotResponse(
+                    message=formatted_text,
+                    intent=IntentType.PHARMACY_SEARCH,
+                    status="success",
+                    results=tool_res.data,
+                    suggestions=["Find another medicine", "What does low stock mean?", "How does MediLocate work?"],
+                    context=conv_context.to_dict(),
+                )
+
+            if tool_res.status == "no_results":
+                medicine_desc = f" for '{conv_context.searched_medicine}'" if conv_context.searched_medicine else ""
+                return MediBotResponse(
+                    message=(
+                        f"No matching pharmacies found in the directory{medicine_desc} for the specified criteria. "
+                        "You can try searching for a different medicine or checking back later as pharmacies update their inventories."
+                    ),
+                    intent=IntentType.PHARMACY_SEARCH,
+                    status="no_results",
+                    results=[],
+                    suggestions=["Search for a medicine", "How does MediLocate work?"],
+                    context=conv_context.to_dict(),
+                )
+
+            if tool_res.status == "unavailable":
+                return MediBotResponse(
+                    message=tool_res.message,
+                    intent=IntentType.PHARMACY_SEARCH,
+                    status="unavailable",
+                    suggestions=["Search for a medicine", "How does MediLocate work?"],
+                    context=conv_context.to_dict(),
+                )
+
             return MediBotResponse(
-                message=tool_res.message,
+                message=f"Pharmacy directory error: {tool_res.message}",
                 intent=IntentType.PHARMACY_SEARCH,
-                status=tool_res.status,
-                results=tool_res.data,
+                status="error",
                 suggestions=["Search for a medicine", "How does MediLocate work?"],
                 context=conv_context.to_dict(),
             )
@@ -191,6 +250,24 @@ class DialogueManager:
         tool_res = self.medicine_tool.search(query=medicine_query)
 
         if tool_res.status == "success":
+            # Extract medicine ID and canonical name from top match when available
+            if tool_res.data and isinstance(tool_res.data, list) and len(tool_res.data) > 0:
+                top_item = tool_res.data[0]
+                med_info = (
+                    top_item.get("medicine")
+                    if isinstance(top_item, dict) and "medicine" in top_item
+                    else top_item
+                )
+                if isinstance(med_info, dict):
+                    if "id" in med_info:
+                        context.searched_medicine_id = str(med_info["id"])
+                    gen = med_info.get("generic_name") or ""
+                    strn = med_info.get("strength") or ""
+                    if gen and strn:
+                        context.searched_medicine = f"{gen} {strn}".strip()
+                    elif gen:
+                        context.searched_medicine = gen
+
             message_text = format_medicine_search_response(medicine_query, tool_res.data)
             return MediBotResponse(
                 message=message_text,

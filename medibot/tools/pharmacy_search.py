@@ -34,6 +34,8 @@ class PharmacySearchTool:
         lon: Optional[float] = None,
         max_radius_km: Optional[float] = None,
         limit: Optional[int] = 5,
+        medicine_name: Optional[str] = None,
+        medicine_id: Optional[Any] = None,
     ) -> ToolResult:
         """
         Search verified pharmacy establishments.
@@ -44,6 +46,8 @@ class PharmacySearchTool:
             lon: User longitude.
             max_radius_km: Optional search radius in kilometres.
             limit: Maximum pharmacies to return.
+            medicine_name: Optional medicine name to check inventory for.
+            medicine_id: Optional medicine identifier.
 
         Returns:
             ToolResult dataclass.
@@ -60,18 +64,31 @@ class PharmacySearchTool:
             )
 
         try:
-            results = self._provider(
-                query=query,
-                lat=lat,
-                lon=lon,
-                max_radius_km=max_radius_km,
-                limit=limit,
-            )
+            try:
+                results = self._provider(
+                    query=query,
+                    lat=lat,
+                    lon=lon,
+                    max_radius_km=max_radius_km,
+                    limit=limit,
+                    medicine_name=medicine_name,
+                    medicine_id=medicine_id,
+                )
+            except TypeError:
+                results = self._provider(
+                    query=query,
+                    lat=lat,
+                    lon=lon,
+                    max_radius_km=max_radius_km,
+                    limit=limit,
+                )
+
             if not results:
+                target_desc = f" for '{medicine_name}'" if medicine_name else ""
                 return ToolResult(
                     status="no_results",
                     data=[],
-                    message="No matching pharmacies found in the directory for the specified criteria.",
+                    message=f"No matching pharmacies found in the directory{target_desc} for the specified criteria.",
                 )
             return ToolResult(
                 status="success",

@@ -8,6 +8,7 @@ numeric values, strength units, and active ingredient distinctions.
 
 from __future__ import annotations
 
+import html
 import re
 import unicodedata
 from typing import Optional, Tuple, List, Set
@@ -86,8 +87,11 @@ def normalize_text(text: Optional[str]) -> str:
     if not text or not isinstance(text, str):
         return ""
 
+    # Unescape any unintended HTML entities (e.g. &#x35; -> '5', &#x31; -> '1')
+    raw_clean = html.unescape(text)
+
     # Normalize Unicode (NFKC handles full-width characters, micro signs, etc.)
-    normalized = unicodedata.normalize("NFKC", text)
+    normalized = unicodedata.normalize("NFKC", raw_clean)
 
     # Word-boundary replacement of micro symbol µg or standalone ug to standard mcg
     normalized = re.sub(r"(?<=\d)\s*(?:µg|ug)(?=\s|$|[^\w])", "mcg", normalized, flags=re.IGNORECASE)

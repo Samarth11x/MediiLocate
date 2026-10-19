@@ -45,5 +45,7 @@ class PharmacySearchToolProtocol(Protocol):
         lon: Optional[float] = None,
         max_radius_km: Optional[float] = None,
         limit: Optional[int] = 5,
+        medicine_name: Optional[str] = None,
+        medicine_id: Optional[Any] = None,
     ) -> ToolResult:
         ...

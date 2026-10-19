@@ -58,7 +58,24 @@ class Medicine(models.Model):
             models.Index(fields=['brand_name']),
         ]
 
+    def clean(self):
+        super().clean()
+        import html
+        if self.generic_name:
+            self.generic_name = html.unescape(self.generic_name)
+        if self.brand_name:
+            self.brand_name = html.unescape(self.brand_name)
+        if self.strength:
+            self.strength = html.unescape(self.strength)
+        if self.dosage_form:
+            self.dosage_form = html.unescape(self.dosage_form)
+
     def __str__(self):
-        brand_part = f"{self.brand_name} (" if self.brand_name else ""
-        closing = ")" if self.brand_name else ""
-        return f"{brand_part}{self.generic_name}{closing} {self.strength} {self.dosage_form}"
+        import html
+        b_name = html.unescape(self.brand_name) if self.brand_name else None
+        g_name = html.unescape(self.generic_name) if self.generic_name else ""
+        s_val = html.unescape(self.strength) if self.strength else ""
+        d_val = html.unescape(self.dosage_form) if self.dosage_form else ""
+        brand_part = f"{b_name} (" if b_name else ""
+        closing = ")" if b_name else ""
+        return f"{brand_part}{g_name}{closing} {s_val} {d_val}".strip()
