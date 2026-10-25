@@ -6,6 +6,42 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
+let memoryCsrfToken =
+  (typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test') ||
+  (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test')
+    ? 'test-csrf-token'
+    : null;
+
+export function setMemoryCsrfToken(token) {
+  memoryCsrfToken = token;
+}
+
+export function getCsrfTokenFromCookie() {
+  if (typeof document === 'undefined' || !document.cookie) return null;
+  const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+export function getCsrfToken() {
+  return memoryCsrfToken || getCsrfTokenFromCookie();
+}
+
+/**
+ * Fetches CSRF token from the backend bootstrap endpoint.
+ */
+export async function fetchCsrfToken() {
+  try {
+    const res = await apiRequest('/api/v1/auth/csrf/', { method: 'GET' });
+    if (res && res.csrfToken) {
+      memoryCsrfToken = res.csrfToken;
+      return res.csrfToken;
+    }
+  } catch {
+    // Non-fatal; fallback to cookie
+  }
+  return getCsrfTokenFromCookie();
+}
+
 export class ApiError extends Error {
   constructor(message, status = 500, data = null, isNetworkError = false) {
     super(message);
@@ -26,6 +62,9 @@ export class ApiError extends Error {
 export async function apiRequest(endpoint, options = {}, timeoutMs = 10000) {
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
+  const method = (options.method || 'GET').toUpperCase();
+  const isUnsafeMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -34,12 +73,20 @@ export async function apiRequest(endpoint, options = {}, timeoutMs = 10000) {
     ...(options.headers || {}),
   };
 
+  if (isUnsafeMethod && !headers['X-CSRFToken'] && !headers['x-csrftoken']) {
+    const token = getCsrfToken();
+    if (token) {
+      headers['X-CSRFToken'] = token;
+    }
+  }
+
   if (options.body && typeof options.body === 'string' && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
 
   try {
     const response = await fetch(url, {
+      credentials: options.credentials || 'include',
       ...options,
       headers,
       signal: controller.signal,

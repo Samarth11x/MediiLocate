@@ -64,7 +64,7 @@ describe('MediLocate AI - Frontend Foundation', () => {
     // Homepage sections
     expect(screen.getByRole('heading', { level: 2, name: /How MediLocate Works/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: /Partner with MediLocate AI/i })).toBeInTheDocument();
-    expect(screen.getByText(/Proximity Ranking \(Planned\):/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Search Medicine/i }).length).toBeGreaterThanOrEqual(1);
   });
 
   it('5. Handles mobile navigation drawer toggle interactions correctly', () => {
@@ -88,34 +88,20 @@ describe('MediLocate AI - Frontend Foundation', () => {
     expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('6. Produces an accessible validation error when submitting an empty search', () => {
+  it('6. Renders hero portal actions directing to patient discovery and pharmacy partner onboarding', () => {
     renderAppReady();
 
-    const searchInput = screen.getByPlaceholderText(/Search medicine name, strength or brand\.\.\./i);
-    const searchButton = screen.getByRole('button', { name: /Search Medicine/i });
+    const patientBtn = screen.getAllByRole('button', { name: /Search Medicine/i })[0];
+    const pharmacyBtn = screen.getByRole('button', { name: /For Pharmacies/i });
 
-    // Submit while empty
-    fireEvent.change(searchInput, { target: { value: '   ' } });
-    fireEvent.click(searchButton);
-
-    const alertMessage = screen.getByRole('alert');
-    expect(alertMessage).toBeInTheDocument();
-    expect(alertMessage).toHaveTextContent(/Please enter a medicine name, strength, or brand to search/i);
+    expect(patientBtn).toBeInTheDocument();
+    expect(pharmacyBtn).toBeInTheDocument();
   });
 
-  it('7. Submitting a non-empty search reports that search is planned and does not invent fake results', () => {
+  it('7. Displays interactive formulation exploration chips in preview showcase', () => {
     renderAppReady();
 
-    const searchInput = screen.getByPlaceholderText(/Search medicine name, strength or brand\.\.\./i);
-    const searchButton = screen.getByRole('button', { name: /Search Medicine/i });
-
-    // Submit non-empty query
-    fireEvent.change(searchInput, { target: { value: 'Amoxicillin 500mg' } });
-    fireEvent.click(searchButton);
-
-    const statusMessage = screen.getByRole('status');
-    expect(statusMessage).toBeInTheDocument();
-    expect(statusMessage).toHaveTextContent(/Search query "Amoxicillin 500mg" captured/i);
-    expect(statusMessage).toHaveTextContent(/No simulated or fake results are displayed/i);
+    const chip = screen.getByRole('button', { name: /Explore Paracetamol 500mg/i });
+    expect(chip).toBeInTheDocument();
   });
 });

@@ -15,8 +15,24 @@ import { decodeHtmlEntities } from '../../utils/textUtils';
  * - Prominent emergency guidance and medical advice disclaimers
  * - Clear fictional demonstration notice
  */
-export default function MediBotDrawer() {
-  const [isOpen, setIsOpen] = useState(false);
+export default function MediBotDrawer({
+  isOpen: externalIsOpen,
+  onOpenChange: onExternalOpenChange,
+} = {}) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isControlled = externalIsOpen !== undefined;
+  const isOpen = isControlled ? externalIsOpen : internalIsOpen;
+
+  const setIsOpen = (nextState) => {
+    const resolvedState = typeof nextState === 'function' ? nextState(isOpen) : nextState;
+    if (isControlled) {
+      if (onExternalOpenChange) {
+        onExternalOpenChange(resolvedState);
+      }
+    } else {
+      setInternalIsOpen(resolvedState);
+    }
+  };
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationContext, setConversationContext] = useState({});
@@ -114,7 +130,11 @@ export default function MediBotDrawer() {
           aria-expanded="false"
           aria-label="Open MediBot conversational assistant"
         >
-          <span className="medibot-launcher__icon" aria-hidden="true">💬</span>
+          <span className="medibot-launcher__icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+          </span>
           <span className="medibot-launcher__text">Ask MediBot</span>
         </button>
       )}
@@ -130,7 +150,15 @@ export default function MediBotDrawer() {
           {/* Header */}
           <div className="medibot-drawer__header">
             <div className="medibot-drawer__branding">
-              <span className="medibot-drawer__avatar" aria-hidden="true">🤖</span>
+              <span className="medibot-drawer__avatar" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="10" rx="2" />
+                  <circle cx="12" cy="5" r="2" />
+                  <path d="M12 7v4" />
+                  <line x1="8" y1="16" x2="8.01" y2="16" />
+                  <line x1="16" y1="16" x2="16.01" y2="16" />
+                </svg>
+              </span>
               <div>
                 <h3 className="medibot-drawer__title">MediBot Assistant</h3>
                 <span className="medibot-drawer__subtitle">Medical Safety & Discovery Engine</span>
@@ -142,14 +170,17 @@ export default function MediBotDrawer() {
               onClick={() => setIsOpen(false)}
               aria-label="Close MediBot chat"
             >
-              ✕
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
             </button>
           </div>
 
           {/* Safety Disclaimer Banner */}
           <div className="medibot-drawer__disclaimer" role="note">
             <span>
-              ℹ️ <strong>Informational only:</strong> MediBot does not diagnose conditions or prescribe medications. In an emergency, dial 112 / 108 / 911.
+              <strong>Informational only:</strong> MediBot does not diagnose conditions or prescribe medications. In an emergency, dial 112 / 108 / 911.
             </span>
           </div>
 
@@ -169,7 +200,12 @@ export default function MediBotDrawer() {
                 {/* Emergency Indicator */}
                 {msg.safetyCategory === 'emergency_concern' && (
                   <div className="chat-bubble__emergency-tag">
-                    🚨 ACUTE MEDICAL EMERGENCY NOTICE
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px', verticalAlign: '-2px' }}>
+                      <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    ACUTE MEDICAL EMERGENCY NOTICE
                   </div>
                 )}
 
@@ -216,8 +252,12 @@ export default function MediBotDrawer() {
                                   </span>
                                 )}
                                 {item.distance_km != null && (
-                                  <span style={{ color: 'var(--color-text-muted)' }}>
-                                    📍 {typeof item.distance_km === 'number' ? item.distance_km.toFixed(1) : item.distance_km} km
+                                  <span style={{ color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z" />
+                                      <circle cx="12" cy="10" r="3" />
+                                    </svg>
+                                    {typeof item.distance_km === 'number' ? item.distance_km.toFixed(1) : item.distance_km} km
                                   </span>
                                 )}
                                 {item.quantity != null && (

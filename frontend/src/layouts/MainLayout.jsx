@@ -2,11 +2,12 @@ import React from 'react';
 import DemoModeBanner from '../components/common/DemoModeBanner';
 import SiteHeader from '../components/common/SiteHeader';
 import SiteFooter from '../components/common/SiteFooter';
+import PwaInstallPrompt from '../components/common/PwaInstallPrompt';
 
 /**
  * MainLayout
  * Application frame providing skip link, mandatory demo warning,
- * responsive header, main content region, and footer.
+ * responsive header, main content region, footer, and PWA capabilities.
  */
 export default function MainLayout({ children }) {
   return (
@@ -26,6 +27,9 @@ export default function MainLayout({ children }) {
       <main id="main-content" className="main-content" tabIndex={-1}>
         {children}
       </main>
+
+      {/* PWA Install Capability and Offline Warning */}
+      <PwaInstallPrompt />
 
       {/* Global Site Footer */}
       <SiteFooter />

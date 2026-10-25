@@ -83,8 +83,11 @@ export default function PharmacyCard({ pharmacyItem }) {
                 Demo Pharmacy
               </span>
             )}
-            <span className="verified-chip" title="Licensed pharmacy verified by MediLocate">
-              ✓ Verified Store
+            <span className="verified-chip" title="Licensed pharmacy verified by MediLocate" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Verified Store
             </span>
           </div>
           <h3 className="pharmacy-card__name">{pharmacy.name}</h3>
@@ -116,8 +119,12 @@ export default function PharmacyCard({ pharmacyItem }) {
         {distance_km != null && (
           <div className="pharmacy-card__detail-item">
             <span className="pharmacy-card__detail-label">Distance</span>
-            <span className="pharmacy-card__detail-value">
-              📍 {typeof distance_km === 'number' ? distance_km.toFixed(1) : distance_km} km away
+            <span className="pharmacy-card__detail-value" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              {typeof distance_km === 'number' ? distance_km.toFixed(1) : distance_km} km away
             </span>
           </div>
         )}

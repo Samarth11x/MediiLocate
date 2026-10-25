@@ -1,0 +1,46 @@
+# ==============================================================================
+# MediLocate AI — Render Infrastructure as Code (Blueprint)
+# Provisions:
+# 1. Managed PostgreSQL database (Render Postgres)
+# 2. Production Python Web Service running Gunicorn + WhiteNoise + Vite SPA
+# ==============================================================================
+
+services:
+  - type: web
+    name: medilocate
+    runtime: python
+    plan: starter
+    region: oregon
+    buildCommand: ./build.sh
+    startCommand: cd backend && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 4 --threads 2 --timeout 60
+    healthCheckPath: /api/v1/health/
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: DJANGO_ENV
+        value: production
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: medilocate-db
+          property: connectionString
+      - key: SECURE_SSL_REDIRECT
+        value: "True"
+      - key: CORS_ALLOW_CREDENTIALS
+        value: "True"
+      - key: SECURE_HSTS_SECONDS
+        value: "31536000"
+
+databases:
+  - name: medilocate-db
+    databaseName: medilocate
+    user: medilocate_user
+    plan: starter
+    region: oregon
+    postgresMajorVersion: "16"

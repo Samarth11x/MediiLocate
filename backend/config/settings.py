@@ -50,6 +50,9 @@ ALLOWED_HOSTS = [
     for host in os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',')
     if host.strip()
 ]
+RENDER_EXTERNAL_HOSTNAME = os.getenv('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 # ------------------------------------------------------------------------------
 # Application Definitions
@@ -77,6 +80,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # Must be at the very top
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Immediately after SecurityMiddleware for asset delivery
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -107,8 +111,9 @@ WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
 # ------------------------------------------------------------------------------
-# Database Configuration (Supabase PostgreSQL with Development SQLite Fallback)
+# Database Configuration (Render / PostgreSQL via DATABASE_URL, Supabase, or SQLite)
 # ------------------------------------------------------------------------------
+DATABASE_URL = os.getenv('DATABASE_URL')
 SUPABASE_DB_HOST = os.getenv('SUPABASE_DB_HOST')
 SUPABASE_DB_PORT = os.getenv('SUPABASE_DB_PORT', '5432')
 SUPABASE_DB_NAME = os.getenv('SUPABASE_DB_NAME', 'postgres')
@@ -116,7 +121,17 @@ SUPABASE_DB_USER = os.getenv('SUPABASE_DB_USER', 'postgres')
 SUPABASE_DB_PASSWORD = os.getenv('SUPABASE_DB_PASSWORD')
 SUPABASE_DB_SSLMODE = os.getenv('SUPABASE_DB_SSLMODE', 'require')
 
-if SUPABASE_DB_HOST and SUPABASE_DB_PASSWORD:
+if DATABASE_URL:
+    # Production PostgreSQL connection string (Render managed PostgreSQL)
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+elif SUPABASE_DB_HOST and SUPABASE_DB_PASSWORD:
     # Direct PostgreSQL connection to Supabase via Psycopg 3
     DATABASES = {
         'default': {
@@ -132,11 +147,11 @@ if SUPABASE_DB_HOST and SUPABASE_DB_PASSWORD:
         }
     }
 else:
-    # Fallback mode for local development/testing when Supabase credentials are not provided
+    # Fallback mode for local development/testing when PostgreSQL credentials are not provided
     if DJANGO_ENV == 'production':
         raise ImproperlyConfigured(
-            "Production database configuration missing: SUPABASE_DB_HOST and "
-            "SUPABASE_DB_PASSWORD must be configured in environment."
+            "Production database configuration missing: set DATABASE_URL or "
+            "SUPABASE_DB_HOST / SUPABASE_DB_PASSWORD in the environment."
         )
 
     DATABASES = {
@@ -168,10 +183,18 @@ USE_I18N = True
 USE_TZ = True
 
 # ------------------------------------------------------------------------------
-# Static files (CSS, JavaScript, Images)
+# Static files (CSS, JavaScript, Images, and Frontend Vite Build via WhiteNoise)
 # ------------------------------------------------------------------------------
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+VITE_DIST_DIR = PROJECT_ROOT / 'frontend' / 'dist'
+STATICFILES_DIRS = []
+if VITE_DIST_DIR.exists():
+    STATICFILES_DIRS.append(VITE_DIST_DIR)
+    # Serve root-level PWA and static assets (favicon.svg, manifest, sw.js, offline.html) directly from root
+    WHITENOISE_ROOT = VITE_DIST_DIR
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -185,6 +208,9 @@ REST_FRAMEWORK = {
     'DEFAULT_PARSER_CLASSES': [
         'rest_framework.parsers.JSONParser',
     ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
 }
 
 if DEBUG:
@@ -194,7 +220,7 @@ if DEBUG:
     )
 
 # ------------------------------------------------------------------------------
-# CORS Configuration (Explicit Origins, No Unrestricted Wildcards)
+# CORS & CSRF Configuration
 # ------------------------------------------------------------------------------
 CORS_ALLOW_ALL_ORIGINS = False
 
@@ -206,3 +232,47 @@ CORS_ALLOWED_ORIGINS = [
     ).split(',')
     if origin.strip()
 ]
+
+CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        'CSRF_TRUSTED_ORIGINS',
+        'http://localhost:5173,http://127.0.0.1:5173'
+    ).split(',')
+    if origin.strip()
+]
+
+if RENDER_EXTERNAL_HOSTNAME:
+    render_url = f'https://{RENDER_EXTERNAL_HOSTNAME}'
+    if render_url not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(render_url)
+    if render_url not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(render_url)
+
+# ------------------------------------------------------------------------------
+# Session & CSRF Cookie Security
+# ------------------------------------------------------------------------------
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = not DEBUG
+
+CSRF_COOKIE_HTTPONLY = False  # Must be False so frontend client can read csrftoken for safe bootstrap
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
+
+# ------------------------------------------------------------------------------
+# Production Security Headers & SSL Guardrails
+# ------------------------------------------------------------------------------
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True').lower() in ('true', '1', 'yes')
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '31536000'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True

@@ -1,7 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import HomePage from '../pages/HomePage';
+import UserPortalPage from '../pages/UserPortalPage';
+import { RouterProvider } from '../context/RouterContext';
+import { AuthProvider } from '../context/AuthContext';
+
+const renderSearchPortal = () => render(
+  <RouterProvider initialPath="/app">
+    <AuthProvider>
+      <UserPortalPage />
+    </AuthProvider>
+  </RouterProvider>
+);
 
 describe('MediLocate AI - Phase 6: Medicine Search & Pharmacy Availability Workflows', () => {
   const mockSuccessResponse = {
@@ -148,7 +158,7 @@ describe('MediLocate AI - Phase 6: Medicine Search & Pharmacy Availability Workf
       json: async () => mockSuccessResponse,
     });
 
-    render(<HomePage />);
+    renderSearchPortal();
 
     const searchInput = screen.getByPlaceholderText(/Search medicine name, strength or brand\.\.\./i);
     const searchButton = screen.getByRole('button', { name: /Search Medicine/i });
@@ -184,7 +194,7 @@ describe('MediLocate AI - Phase 6: Medicine Search & Pharmacy Availability Workf
       json: async () => mockSuccessResponse,
     });
 
-    render(<HomePage />);
+    renderSearchPortal();
 
     const searchInput = screen.getByPlaceholderText(/Search medicine name, strength or brand\.\.\./i);
     const searchButton = screen.getByRole('button', { name: /Search Medicine/i });
@@ -208,7 +218,7 @@ describe('MediLocate AI - Phase 6: Medicine Search & Pharmacy Availability Workf
       json: async () => mockSuccessResponse,
     });
 
-    render(<HomePage />);
+    renderSearchPortal();
 
     const searchInput = screen.getByPlaceholderText(/Search medicine name, strength or brand\.\.\./i);
     const searchButton = screen.getByRole('button', { name: /Search Medicine/i });
@@ -237,7 +247,7 @@ describe('MediLocate AI - Phase 6: Medicine Search & Pharmacy Availability Workf
       }),
     });
 
-    render(<HomePage />);
+    renderSearchPortal();
 
     const searchInput = screen.getByPlaceholderText(/Search medicine name, strength or brand\.\.\./i);
     const searchButton = screen.getByRole('button', { name: /Search Medicine/i });
@@ -256,7 +266,7 @@ describe('MediLocate AI - Phase 6: Medicine Search & Pharmacy Availability Workf
   it('5. Handles API network error gracefully with accessible error card and retry option', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network connection failed'));
 
-    render(<HomePage />);
+    renderSearchPortal();
 
     const searchInput = screen.getByPlaceholderText(/Search medicine name, strength or brand\.\.\./i);
     const searchButton = screen.getByRole('button', { name: /Search Medicine/i });
@@ -285,7 +295,7 @@ describe('MediLocate AI - Phase 6: Medicine Search & Pharmacy Availability Workf
       },
     });
 
-    render(<HomePage />);
+    renderSearchPortal();
 
     // Geolocation was NOT called automatically on mount
     expect(getCurrentPositionMock).not.toHaveBeenCalled();
@@ -313,7 +323,7 @@ describe('MediLocate AI - Phase 6: Medicine Search & Pharmacy Availability Workf
       },
     });
 
-    render(<HomePage />);
+    renderSearchPortal();
 
     const locationBtn = screen.getByRole('button', { name: /Enable location for proximity ranking/i });
     fireEvent.click(locationBtn);

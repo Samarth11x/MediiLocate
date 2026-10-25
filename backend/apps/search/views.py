@@ -35,8 +35,11 @@ from core_intelligence.location.distance import calculate_distance_safe
 
 
 DEMO_DISCLOSURE_NOTICE = (
-    "DEMO MODE — All pharmacy listings, locations, prices, and inventory shown here "
-    "are fictional examples and are not real-time pharmacy information."
+    "DEMO DATA — Pharmacy names and listing details are user-provided and have not been independently verified. "
+    "Medicine prices and stock quantities are sample values, not live pharmacy inventory. "
+    "Please contact the pharmacy to confirm availability. "
+    "(DEMO MODE — All pharmacy listings, locations, prices, and inventory shown here "
+    "are fictional examples and are not real-time pharmacy information.)"
 )
 
 

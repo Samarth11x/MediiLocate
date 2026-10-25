@@ -4,6 +4,7 @@ Pharmacy domain models for MediLocate AI.
 
 from decimal import Decimal
 from django.db import models
+from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 
@@ -68,12 +69,48 @@ class Pharmacy(models.Model):
         blank=True,
         verbose_name="Contact Phone Number",
     )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pharmacies',
+        verbose_name="Pharmacist Owner",
+        help_text="User account responsible for managing this pharmacy",
+    )
+    license_number = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name="Drug License Number",
+        help_text="Official pharmacy operating license credential",
+    )
     verification_status = models.CharField(
         max_length=20,
         choices=VerificationStatus.choices,
         default=VerificationStatus.PENDING,
         db_index=True,
         verbose_name="Verification Status",
+    )
+    rejection_reason = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name="Rejection Reason",
+        help_text="Reason provided by administrator if application was rejected",
+    )
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='verified_pharmacies',
+        verbose_name="Verified By",
+        help_text="Administrator who verified or rejected this establishment",
+    )
+    verified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Verification Timestamp",
     )
     opening_hours = models.JSONField(
         default=dict,
